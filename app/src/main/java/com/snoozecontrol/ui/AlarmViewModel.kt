@@ -1,0 +1,98 @@
+package com.snoozecontrol.ui
+
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.snoozecontrol.data.AlarmDatabase
+import com.snoozecontrol.model.AlarmItem
+import com.snoozecontrol.model.DismissState
+import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class AlarmViewModel(application: Application) : AndroidViewModel(application) {
+    private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
+    
+    val alarms: StateFlow<List<AlarmItem>> = alarmDao.getAllAlarms()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun addAlarm(context: Context, hour: Int, minute: Int) {
+        viewModelScope.launch {
+            val newAlarm = AlarmItem(
+                hour = hour,
+                minute = minute,
+                isEnabled = true
+            )
+            val id = alarmDao.insertAlarm(newAlarm)
+            AndroidAlarmScheduler(context).schedule(newAlarm.copy(id = id.toInt()))
+        }
+    }
+
+    fun toggleAlarm(context: Context, alarmId: Int) {
+        viewModelScope.launch {
+            val alarm = alarms.value.find { it.id == alarmId } ?: return@launch
+            val updatedAlarm = alarm.copy(isEnabled = !alarm.isEnabled)
+            alarmDao.updateAlarm(updatedAlarm)
+            
+            val scheduler = AndroidAlarmScheduler(context)
+            if (updatedAlarm.isEnabled) {
+                scheduler.schedule(updatedAlarm)
+            } else {
+                scheduler.cancel(updatedAlarm)
+            }
+        }
+    }
+
+    fun removeAlarm(context: Context, alarmId: Int) {
+        viewModelScope.launch {
+            alarms.value.find { it.id == alarmId }?.let {
+                alarmDao.deleteAlarm(it)
+                AndroidAlarmScheduler(context).cancel(it)
+            }
+        }
+    }
+
+    private val _dismissState = MutableStateFlow(DismissState())
+    val dismissState: StateFlow<DismissState> = _dismissState.asStateFlow()
+
+    fun generateNewMathProblem() {
+        val num1 = (1..20).random()
+        val num2 = (1..20).random()
+        val operator = listOf("+", "-", "*").random()
+        
+        val (equation, answer) = when (operator) {
+            "+" -> "$num1 + $num2" to (num1 + num2)
+            "-" -> "$num1 - $num2" to (num1 - num2)
+            "*" -> "$num1 * $num2" to (num1 * num2)
+            else -> "$num1 + $num2" to (num1 + num2)
+        }
+        
+        _dismissState.value = DismissState(equation = equation, correctAnswer = answer)
+    }
+
+    fun onAnswerChange(newInput: String) {
+        _dismissState.update { it.copy(input = newInput, error = null) }
+    }
+
+    fun checkAnswer(onSuccess: () -> Unit) {
+        val currentState = _dismissState.value
+        val userTypedAnswer = currentState.input.toIntOrNull()
+        
+        if (userTypedAnswer == currentState.correctAnswer) {
+            onSuccess()
+            _dismissState.value = DismissState() // Reset
+        } else {
+            _dismissState.update { it.copy(error = "Incorrect answer, try again!", input = "") }
+        }
+    }
+}
