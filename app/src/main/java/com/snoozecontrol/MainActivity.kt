@@ -40,6 +40,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
+        }
+
         handleIntent(intent)
 
         setContent {
@@ -51,12 +55,18 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (dismissState.equation.isNotEmpty()) {
+                    if (dismissState.challengeType != com.snoozecontrol.model.ChallengeType.NONE) {
                         AlarmDismissScreen(
+                            challengeType = dismissState.challengeType,
                             equation = dismissState.equation,
                             answerInput = dismissState.input,
                             errorMessage = dismissState.error,
                             onAnswerChange = viewModel::onAnswerChange,
+                            onBarcodeScanned = { barcode ->
+                                viewModel.onBarcodeScanned(barcode) {
+                                    stopService(Intent(this@MainActivity, AlarmService::class.java))
+                                }
+                            },
                             onDismissClick = {
                                 viewModel.checkAnswer {
                                     stopService(Intent(this@MainActivity, AlarmService::class.java))
@@ -66,8 +76,8 @@ class MainActivity : ComponentActivity() {
                     } else {
                         AlarmScreen(
                             alarms = alarms,
-                            onAddAlarm = { hour, minute ->
-                                viewModel.addAlarm(this@MainActivity, hour, minute)
+                            onAddAlarm = { hour, minute, challengeType, barcode ->
+                                viewModel.addAlarm(this@MainActivity, hour, minute, challengeType, barcode)
                             },
                             onToggleAlarm = { id ->
                                 viewModel.toggleAlarm(this@MainActivity, id)
@@ -86,7 +96,8 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         if (intent?.getBooleanExtra("ALARM_TRIGGERED", false) == true) {
-            viewModel.generateNewMathProblem()
+            val alarmId = intent.getIntExtra("ALARM_ID", -1)
+            viewModel.triggerAlarm(alarmId)
         }
     }
 

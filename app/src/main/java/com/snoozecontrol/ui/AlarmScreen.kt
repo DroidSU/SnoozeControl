@@ -16,16 +16,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snoozecontrol.model.AlarmItem
+import com.snoozecontrol.model.ChallengeType
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmScreen(
     alarms: List<AlarmItem>,
-    onAddAlarm: (hour: Int, minute: Int) -> Unit,
+    onAddAlarm: (hour: Int, minute: Int, challengeType: ChallengeType, barcode: String?) -> Unit,
     onToggleAlarm: (id: Int) -> Unit
 ) {
     val context = LocalContext.current
+    var showAddDialog by remember { mutableStateOf(false) }
+    var selectedTime by remember { mutableStateOf(Calendar.getInstance()) }
+
+    if (showAddDialog) {
+        AddAlarmChallengeDialog(
+            hour = selectedTime.get(Calendar.HOUR_OF_DAY),
+            minute = selectedTime.get(Calendar.MINUTE),
+            onDismiss = { showAddDialog = false },
+            onConfirm = { challengeType, barcode ->
+                onAddAlarm(selectedTime.get(Calendar.HOUR_OF_DAY), selectedTime.get(Calendar.MINUTE), challengeType, barcode)
+                showAddDialog = false
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -39,7 +54,11 @@ fun AlarmScreen(
                 TimePickerDialog(
                     context,
                     { _, hourOfDay, minute ->
-                        onAddAlarm(hourOfDay, minute)
+                        selectedTime = Calendar.getInstance().apply {
+                            set(Calendar.HOUR_OF_DAY, hourOfDay)
+                            set(Calendar.MINUTE, minute)
+                        }
+                        showAddDialog = true
                     },
                     calendar.get(Calendar.HOUR_OF_DAY),
                     calendar.get(Calendar.MINUTE),
@@ -139,7 +158,7 @@ fun AlarmScreenPreview() {
     )
     AlarmScreen(
         alarms = sampleAlarms,
-        onAddAlarm = { _, _ -> },
+        onAddAlarm = { _, _, _, _ -> },
         onToggleAlarm = {}
     )
 }

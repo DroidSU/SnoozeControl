@@ -20,9 +20,12 @@ class AlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
+        
         val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             putExtra("ALARM_TRIGGERED", true)
+            putExtra("ALARM_ID", alarmId)
         }
 
         val fullScreenPendingIntent = PendingIntent.getActivity(

@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snoozecontrol.data.AlarmDatabase
 import com.snoozecontrol.model.AlarmItem
+import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.model.DismissState
 import com.snoozecontrol.scheduler.AndroidAlarmScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,12 +27,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = emptyList()
         )
 
-    fun addAlarm(context: Context, hour: Int, minute: Int) {
+    fun addAlarm(context: Context, hour: Int, minute: Int, challengeType: ChallengeType = ChallengeType.MATH, targetBarcode: String? = null) {
         viewModelScope.launch {
             val newAlarm = AlarmItem(
                 hour = hour,
                 minute = minute,
-                isEnabled = true
+                isEnabled = true,
+                challengeType = challengeType,
+                targetBarcode = targetBarcode
             )
             val id = alarmDao.insertAlarm(newAlarm)
             AndroidAlarmScheduler(context).schedule(newAlarm.copy(id = id.toInt()))
@@ -65,6 +68,34 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private val _dismissState = MutableStateFlow(DismissState())
     val dismissState: StateFlow<DismissState> = _dismissState.asStateFlow()
 
+    fun triggerAlarm(alarmId: Int) {
+        viewModelScope.launch {
+            val alarm = alarmDao.getAlarmById(alarmId)
+            if (alarm != null) {
+                when (alarm.challengeType) {
+                    ChallengeType.MATH -> generateNewMathProblem()
+                    ChallengeType.BARCODE -> {
+                        _dismissState.update {
+                            it.copy(
+                                challengeType = ChallengeType.BARCODE,
+                                targetBarcode = alarm.targetBarcode,
+                                isScanning = true
+                            )
+                        }
+                    }
+                    ChallengeType.NONE -> {
+                        _dismissState.update {
+                            it.copy(challengeType = ChallengeType.NONE)
+                        }
+                    }
+                }
+            } else {
+                // Fallback to math if alarm not found
+                generateNewMathProblem()
+            }
+        }
+    }
+
     fun generateNewMathProblem() {
         val num1 = (1..20).random()
         val num2 = (1..20).random()
@@ -77,7 +108,23 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             else -> "$num1 + $num2" to (num1 + num2)
         }
         
-        _dismissState.value = DismissState(equation = equation, correctAnswer = answer)
+        _dismissState.value = DismissState(
+            challengeType = ChallengeType.MATH,
+            equation = equation, 
+            correctAnswer = answer
+        )
+    }
+
+    fun onBarcodeScanned(value: String, onSuccess: () -> Unit) {
+        val currentState = _dismissState.value
+        if (currentState.challengeType == ChallengeType.BARCODE) {
+            if (value == currentState.targetBarcode) {
+                onSuccess()
+                _dismissState.value = DismissState()
+            } else {
+                _dismissState.update { it.copy(error = "Wrong barcode! Scanned: $value") }
+            }
+        }
     }
 
     fun onAnswerChange(newInput: String) {
