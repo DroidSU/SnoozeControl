@@ -1,7 +1,13 @@
 package com.snoozecontrol
 
+import android.Manifest
+import android.app.KeyguardManager
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -12,13 +18,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.core.app.ActivityCompat
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import android.view.WindowManager
-import android.app.KeyguardManager
-import android.content.Context
 import com.snoozecontrol.service.AlarmService
 import com.snoozecontrol.ui.AlarmDismissScreen
 import com.snoozecontrol.ui.AlarmScreen
@@ -30,7 +29,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         setupLockScreenFlags()
         enableEdgeToEdge()
 
@@ -48,6 +47,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val alarms by viewModel.alarms.collectAsState()
+            val nextAlarm by viewModel.nextAlarm.collectAsState()
             val dismissState by viewModel.dismissState.collectAsState()
 
             SnoozeControlTheme {
@@ -76,8 +76,15 @@ class MainActivity : ComponentActivity() {
                     } else {
                         AlarmScreen(
                             alarms = alarms,
+                            nextAlarm = nextAlarm,
                             onAddAlarm = { hour, minute, challengeType, barcode ->
-                                viewModel.addAlarm(this@MainActivity, hour, minute, challengeType, barcode)
+                                viewModel.addAlarm(
+                                    this@MainActivity,
+                                    hour,
+                                    minute,
+                                    challengeType,
+                                    barcode
+                                )
                             },
                             onToggleAlarm = { id ->
                                 viewModel.toggleAlarm(this@MainActivity, id)

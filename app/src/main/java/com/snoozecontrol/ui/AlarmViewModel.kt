@@ -13,9 +13,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
@@ -26,6 +28,26 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    val nextAlarm: StateFlow<AlarmItem?> = alarms.map { alarmList ->
+        val activeAlarms = alarmList.filter { it.isEnabled }
+        if (activeAlarms.isEmpty()) return@map null
+
+        val now = Calendar.getInstance()
+        val currentHour = now.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = now.get(Calendar.MINUTE)
+
+        activeAlarms.sortedWith(compareBy({
+            // Calculate minutes from now to alarm
+            var diff = (it.hour * 60 + it.minute) - (currentHour * 60 + currentMinute)
+            if (diff <= 0) diff += 24 * 60 // If time has passed today, it's for tomorrow
+            diff
+        })).firstOrNull()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
 
     fun addAlarm(context: Context, hour: Int, minute: Int, challengeType: ChallengeType = ChallengeType.MATH, targetBarcode: String? = null) {
         viewModelScope.launch {

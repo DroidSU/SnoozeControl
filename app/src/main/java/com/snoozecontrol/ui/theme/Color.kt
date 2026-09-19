@@ -2,10 +2,16 @@ package com.snoozecontrol.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Sunrise & Starlight Palette
+val SunsetCoral = Color(0xFFFF7E5F)
+val ElectricIndigo = Color(0xFF6A5AE0)
+val SoftLavender = Color(0xFFA594F9)
+val CloudWhite = Color(0xFFF8F9FE)
+val MidnightAbyss = Color(0xFF0B0E14)
+val SteelNavy = Color(0xFF1A1F2B)
+val SoftPeach = Color(0xFFFEB47B)
+val MorningGold = Color(0xFFFFD166)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Functional Colors
+val ErrorRed = Color(0xFFE57373)
+val SuccessGreen = Color(0xFF81C784)
