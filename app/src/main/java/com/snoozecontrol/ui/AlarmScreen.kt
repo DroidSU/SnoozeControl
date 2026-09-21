@@ -1,7 +1,14 @@
 package com.snoozecontrol.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,10 +19,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,12 +36,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,18 +53,28 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snoozecontrol.R
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
+import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.util.Utils
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,33 +86,24 @@ fun AlarmScreen(
     onToggleAlarm: (Int) -> Unit,
     onDeleteAlarm: (AlarmItem) -> Unit
 ) {
+    val context = LocalContext.current
+    val greeting = remember { Utils.getGreeting(context) }
+
     Scaffold(
-        topBar = {
-            LargeTopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = if (nextAlarm != null) stringResource(
-                                R.string.next_alarm_format,
-                                nextAlarm.displayTime
-                            ) else stringResource(R.string.good_morning),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                        )
-                        Text(
-                            text = stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold)
-                        )
-                    }
-                }
-            )
-        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddClick,
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        ambientColor = MaterialTheme.colorScheme.primary,
+                        spotColor = MaterialTheme.colorScheme.primary
+                    )
             ) {
                 Icon(
                     Icons.Default.Add,
@@ -100,65 +111,167 @@ fun AlarmScreen(
                     modifier = Modifier.size(32.dp)
                 )
             }
-        }
+        },
+        containerColor = Color.Transparent
     ) { innerPadding ->
-        if (alarms.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
+            // Removed .padding(innerPadding) to allow background to flow behind system bars
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    bottom = innerPadding.calculateBottomPadding() + 100.dp,
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 180.dp // Clear the floating bar and status bar area
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Surface(
-                        modifier = Modifier.size(120.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.NotificationsOff,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(24.dp)
-                                .fillMaxSize(),
-                            tint = MaterialTheme.colorScheme.primary
+                if (alarms.isEmpty()) {
+                    item {
+                        EmptyStateView()
+                    }
+                } else {
+                    items(alarms, key = { it.id }) { alarm ->
+                        SwipeToDismissRow(
+                            alarm = alarm,
+                            onDismiss = { onDeleteAlarm(alarm) },
+                            onContentClick = { onEditClick(alarm.id) },
+                            onToggle = { onToggleAlarm(alarm.id) }
                         )
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+
+            FloatingGreetingBar(greeting, nextAlarm)
+        }
+    }
+}
+
+@Composable
+fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .statusBarsPadding(),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+        tonalElevation = 12.dp,
+        border = BorderStroke(
+            0.5.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = greeting,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (nextAlarm != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = stringResource(R.string.no_alarms_title),
-                        style = MaterialTheme.typography.titleLarge,
+                        text = stringResource(R.string.next_alarm_format, nextAlarm.displayTime),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WbSunny,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD166),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "24°C",
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = stringResource(R.string.no_alarms_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(
-                    bottom = 88.dp,
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 8.dp
+        }
+    }
+}
+
+@Composable
+fun LazyItemScope.EmptyStateView() {
+    Box(
+        modifier = Modifier
+            .fillParentMaxSize()
+            .padding(bottom = 120.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            val infiniteTransition = rememberInfiniteTransition(label = "floating")
+            val floatAnim by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = -15f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2000, easing = EaseInOutSine),
+                    repeatMode = RepeatMode.Reverse
                 ),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                label = "float"
+            )
+
+            Surface(
+                modifier = Modifier
+                    .size(140.dp)
+                    .offset { IntOffset(0, floatAnim.dp.toPx().roundToInt()) },
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
             ) {
-                items(alarms, key = { it.id }) { alarm ->
-                    SwipeToDismissRow(
-                        alarm = alarm,
-                        onDismiss = { onDeleteAlarm(alarm) },
-                        onContentClick = { onEditClick(alarm.id) },
-                        onToggle = { onToggleAlarm(alarm.id) }
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.NotificationsOff,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(32.dp)
+                        .fillMaxSize(),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                )
             }
+            Spacer(modifier = Modifier.height(32.dp))
+            Text(
+                text = stringResource(R.string.no_alarms_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.no_alarms_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -196,7 +309,7 @@ fun SwipeToDismissRow(
                     .fillMaxSize()
                     .clip(RoundedCornerShape(32.dp))
                     .background(color)
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
@@ -225,34 +338,41 @@ fun AlarmItemRow(
 ) {
     val containerColor by animateColorAsState(
         targetValue = if (alarm.isEnabled)
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+            MaterialTheme.colorScheme.surface
         else
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
         label = "containerColor"
     )
 
-    val elevation by animateDpAsState(
-        targetValue = if (alarm.isEnabled) 8.dp else 0.dp,
-        label = "elevation"
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (alarm.isEnabled) 1f else 0.4f,
+        label = "contentAlpha"
     )
 
     Card(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .shadow(
+                elevation = if (alarm.isEnabled) 8.dp else 2.dp,
+                shape = RoundedCornerShape(32.dp),
+                clip = false
+            ),
         shape = RoundedCornerShape(32.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         onClick = onClick
     ) {
         Row(
             modifier = Modifier
-                .padding(24.dp)
+                .padding(horizontal = 24.dp, vertical = 28.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.alpha(contentAlpha)
+                ) {
                     val challengeIcon = when (alarm.challengeType) {
                         ChallengeType.MATH -> Icons.Default.Calculate
                         ChallengeType.BARCODE -> Icons.Default.QrCodeScanner
@@ -261,7 +381,7 @@ fun AlarmItemRow(
                     Icon(
                         imageVector = challengeIcon,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = if (alarm.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -269,6 +389,7 @@ fun AlarmItemRow(
                         text = alarm.challengeType.name.lowercase()
                             .replaceFirstChar { it.uppercase() },
                         style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
                         color = if (alarm.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }
@@ -278,14 +399,24 @@ fun AlarmItemRow(
                 Text(
                     text = alarm.displayTime,
                     style = MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 44.sp
+                        fontWeight = FontWeight.Black,
+                        fontSize = 52.sp,
+                        letterSpacing = (-1).sp
                     ),
                     color = if (alarm.isEnabled)
-                        MaterialTheme.colorScheme.onPrimaryContainer
+                        MaterialTheme.colorScheme.onSurface
                     else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 )
+
+                if (alarm.isEnabled) {
+                    Text(
+                        text = "Tomorrow morning",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
             Switch(
@@ -295,7 +426,7 @@ fun AlarmItemRow(
                     checkedThumbColor = MaterialTheme.colorScheme.primary,
                     checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
                     uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 )
             )
         }
@@ -310,12 +441,14 @@ fun AlarmScreenPreview() {
         AlarmItem(2, 8, 30, false),
         AlarmItem(3, 22, 15, true)
     )
-    AlarmScreen(
-        alarms = sampleAlarms,
-        nextAlarm = sampleAlarms.first(),
-        onAddClick = {},
-        onEditClick = {},
-        onToggleAlarm = {},
-        onDeleteAlarm = {}
-    )
+    SnoozeControlTheme {
+        AlarmScreen(
+            alarms = sampleAlarms,
+            nextAlarm = sampleAlarms.first(),
+            onAddClick = {},
+            onEditClick = {},
+            onToggleAlarm = {},
+            onDeleteAlarm = {}
+        )
+    }
 }

@@ -11,10 +11,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -25,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -40,6 +40,7 @@ import com.snoozecontrol.ui.AlarmViewModel
 import com.snoozecontrol.ui.BarcodeRegistrationScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AlarmViewModel by viewModels()
@@ -80,13 +81,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val snackbarHostState = remember { SnackbarHostState() }
 
-                    Scaffold(
-                        snackbarHost = { SnackbarHost(snackbarHostState) }
-                    ) { padding ->
+                    Box(modifier = Modifier.fillMaxSize()) {
                         NavHost(
                             navController = navController,
                             startDestination = "alarm_list",
-                            modifier = Modifier.padding(padding)
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             composable("alarm_list") {
                                 AlarmScreen(
@@ -100,7 +99,7 @@ class MainActivity : ComponentActivity() {
                                             id
                                         )
                                     },
-                                    onDeleteAlarm = { alarm ->
+                                    onDeleteAlarm = { alarm -> 
                                         viewModel.deleteAlarm(this@MainActivity, alarm)
                                         scope.launch {
                                             val result = snackbarHostState.showSnackbar(
@@ -125,13 +124,16 @@ class MainActivity : ComponentActivity() {
                                 val alarmId = backStackEntry.arguments?.getInt("alarmId") ?: -1
                                 val alarm = alarms.find { it.id == alarmId }
 
-                                // Observe barcode result from registration screen
                                 val barcodeResult by backStackEntry.savedStateHandle
                                     .getStateFlow<String?>("barcode_result", null).collectAsState()
 
+                                val calendar = Calendar.getInstance().apply {
+                                    add(Calendar.MINUTE, 1)
+                                }
+
                                 AddEditAlarmScreen(
-                                    initialHour = alarm?.hour ?: 7,
-                                    initialMinute = alarm?.minute ?: 0,
+                                    initialHour = alarm?.hour ?: calendar.get(Calendar.HOUR_OF_DAY),
+                                    initialMinute = alarm?.minute ?: calendar.get(Calendar.MINUTE),
                                     initialChallenge = alarm?.challengeType ?: ChallengeType.MATH,
                                     initialBarcode = alarm?.targetBarcode,
                                     resultBarcode = barcodeResult,
@@ -157,9 +159,9 @@ class MainActivity : ComponentActivity() {
                                         backStackEntry.savedStateHandle.remove<String>("barcode_result")
                                         navController.popBackStack()
                                     },
-                                    onBack = {
+                                    onBack = { 
                                         backStackEntry.savedStateHandle.remove<String>("barcode_result")
-                                        navController.popBackStack()
+                                        navController.popBackStack() 
                                     },
                                     onRegisterBarcodeClick = { navController.navigate("register_barcode") }
                                 )
@@ -197,6 +199,11 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
                     }
                 }
             }
