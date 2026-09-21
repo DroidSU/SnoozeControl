@@ -16,12 +16,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
@@ -39,12 +42,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.snoozecontrol.R
 import com.snoozecontrol.model.ChallengeType
 
 @Composable
@@ -85,7 +90,7 @@ fun AlarmDismissScreen(
                 onBarcodeDetected = onBarcodeScanned,
                 modifier = Modifier.fillMaxSize()
             )
-            
+
             // Overlay for Barcode Challenge
             Column(
                 modifier = Modifier
@@ -106,7 +111,7 @@ fun AlarmDismissScreen(
                         Icon(Icons.Default.Alarm, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Scan to Dismiss",
+                            text = stringResource(R.string.scan_to_dismiss_title),
                             style = MaterialTheme.typography.titleLarge,
                             color = Color.White,
                             fontWeight = FontWeight.Bold
@@ -135,7 +140,9 @@ fun AlarmDismissScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .padding(32.dp)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -160,17 +167,19 @@ fun AlarmDismissScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Rise and Shine!",
+                        text = stringResource(R.string.rise_and_shine),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
                     )
                     Text(
-                        text = "Solve the challenge to stop the alarm",
+                        text = stringResource(R.string.solve_challenge_instruction),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color.White.copy(alpha = 0.8f)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(32.dp))
 
                 // Middle Section (Challenge)
                 Surface(
@@ -197,7 +206,7 @@ fun AlarmDismissScreen(
                         OutlinedTextField(
                             value = answerInput,
                             onValueChange = onAnswerChange,
-                            placeholder = { Text("Answer...") },
+                            placeholder = { Text(stringResource(R.string.answer_placeholder)) },
                             modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             isError = errorMessage != null,
@@ -209,7 +218,7 @@ fun AlarmDismissScreen(
                             ),
                             textStyle = MaterialTheme.typography.headlineMedium.copy(textAlign = TextAlign.Center)
                         )
-                        
+
                         if (errorMessage != null) {
                             Text(
                                 text = errorMessage,
@@ -220,6 +229,8 @@ fun AlarmDismissScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(32.dp))
 
                 // Bottom Section (Dismiss Button)
                 Button(
@@ -237,7 +248,7 @@ fun AlarmDismissScreen(
                     Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Dismiss Alarm",
+                        text = stringResource(R.string.dismiss_alarm_button),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -246,18 +257,6 @@ fun AlarmDismissScreen(
         }
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun AlarmDismissScreenPreview() {
-//    AlarmDismissScreen(
-//        equation = "14 + 8",
-//        answerInput = "",
-//        errorMessage = null,
-//        onAnswerChange = {},
-//        onDismissClick = {}
-//    )
-//}
 
 @Preview(showBackground = true)
 @Composable

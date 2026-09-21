@@ -1,8 +1,8 @@
 package com.snoozecontrol.ui
 
-import android.app.TimePickerDialog
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -34,66 +35,52 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.snoozecontrol.R
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
-import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlarmScreen(
     alarms: List<AlarmItem>,
     nextAlarm: AlarmItem?,
-    onAddAlarm: (hour: Int, minute: Int, challengeType: ChallengeType, barcode: String?) -> Unit,
-    onToggleAlarm: (id: Int) -> Unit
+    onAddClick: () -> Unit,
+    onEditClick: (Int) -> Unit,
+    onToggleAlarm: (Int) -> Unit,
+    onDeleteAlarm: (AlarmItem) -> Unit
 ) {
-    val context = LocalContext.current
-    var showAddDialog by remember { mutableStateOf(false) }
-    var selectedTime by remember { mutableStateOf(Calendar.getInstance()) }
-
-    if (showAddDialog) {
-        AddAlarmChallengeDialog(
-            hour = selectedTime.get(Calendar.HOUR_OF_DAY),
-            minute = selectedTime.get(Calendar.MINUTE),
-            onDismiss = { showAddDialog = false },
-            onConfirm = { challengeType, barcode ->
-                onAddAlarm(
-                    selectedTime.get(Calendar.HOUR_OF_DAY),
-                    selectedTime.get(Calendar.MINUTE),
-                    challengeType,
-                    barcode
-                )
-                showAddDialog = false
-            }
-        )
-    }
-
     Scaffold(
         topBar = {
             LargeTopAppBar(
                 title = {
                     Column {
                         Text(
-                            text = if (nextAlarm != null) "Next alarm at ${nextAlarm.displayTime}" else "Good Morning,",
+                            text = if (nextAlarm != null) stringResource(
+                                R.string.next_alarm_format,
+                                nextAlarm.displayTime
+                            ) else stringResource(R.string.good_morning),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
                         Text(
-                            text = "Snooze Control",
+                            text = stringResource(R.string.app_name),
                             style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold)
                         )
                     }
@@ -102,29 +89,14 @@ fun AlarmScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    val calendar = Calendar.getInstance()
-                    TimePickerDialog(
-                        context,
-                        { _, hourOfDay, minute ->
-                            selectedTime = Calendar.getInstance().apply {
-                                set(Calendar.HOUR_OF_DAY, hourOfDay)
-                                set(Calendar.MINUTE, minute)
-                            }
-                            showAddDialog = true
-                        },
-                        calendar.get(Calendar.HOUR_OF_DAY),
-                        calendar.get(Calendar.MINUTE),
-                        true
-                    ).show()
-                },
+                onClick = onAddClick,
                 shape = RoundedCornerShape(20.dp),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(
                     Icons.Default.Add,
-                    contentDescription = "Add Alarm",
+                    contentDescription = stringResource(R.string.add_alarm_desc),
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -154,12 +126,12 @@ fun AlarmScreen(
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "No alarms set yet",
+                        text = stringResource(R.string.no_alarms_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Tap + to start your morning routine",
+                        text = stringResource(R.string.no_alarms_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -179,8 +151,10 @@ fun AlarmScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(alarms, key = { it.id }) { alarm ->
-                    AlarmItemRow(
+                    SwipeToDismissRow(
                         alarm = alarm,
+                        onDismiss = { onDeleteAlarm(alarm) },
+                        onContentClick = { onEditClick(alarm.id) },
                         onToggle = { onToggleAlarm(alarm.id) }
                     )
                 }
@@ -189,10 +163,65 @@ fun AlarmScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeToDismissRow(
+    alarm: AlarmItem,
+    onDismiss: () -> Unit,
+    onContentClick: () -> Unit,
+    onToggle: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.EndToStart) {
+                onDismiss()
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val color by animateColorAsState(
+                when (dismissState.targetValue) {
+                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+                    else -> Color.Transparent
+                }, label = "dismissColor"
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(color)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete_alarm_desc),
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
+        enableDismissFromStartToEnd = false,
+        content = {
+            AlarmItemRow(
+                alarm = alarm,
+                onToggle = onToggle,
+                onClick = onContentClick
+            )
+        }
+    )
+}
+
 @Composable
 fun AlarmItemRow(
     alarm: AlarmItem,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onClick: () -> Unit
 ) {
     val containerColor by animateColorAsState(
         targetValue = if (alarm.isEnabled)
@@ -213,7 +242,7 @@ fun AlarmItemRow(
         shape = RoundedCornerShape(32.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = elevation),
-        onClick = onToggle
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -284,7 +313,9 @@ fun AlarmScreenPreview() {
     AlarmScreen(
         alarms = sampleAlarms,
         nextAlarm = sampleAlarms.first(),
-        onAddAlarm = { _, _, _, _ -> },
-        onToggleAlarm = {}
+        onAddClick = {},
+        onEditClick = {},
+        onToggleAlarm = {},
+        onDeleteAlarm = {}
     )
 }

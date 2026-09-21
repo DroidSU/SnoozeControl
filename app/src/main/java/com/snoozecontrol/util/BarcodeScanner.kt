@@ -1,6 +1,7 @@
 package com.snoozecontrol.util
 
 import android.annotation.SuppressLint
+import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -22,6 +23,9 @@ class BarcodeScanner(
                     for (barcode in barcodes) {
                         barcode.rawValue?.let { onBarcodeDetected(it) }
                     }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("BarcodeScanner", "Barcode scanning failed", e)
                 }
                 .addOnCompleteListener {
                     imageProxy.close()

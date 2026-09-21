@@ -1,3 +1,47 @@
 <resources>
     <string name="app_name">Snooze Control</string>
+
+    <!-- AlarmScreen -->
+    <string name="next_alarm_format">Next alarm at %1$s</string>
+    <string name="good_morning">Good Morning,</string>
+    <string name="add_alarm_desc">Add Alarm</string>
+    <string name="no_alarms_title">No alarms set yet</string>
+    <string name="no_alarms_subtitle">Tap + to start your morning routine</string>
+    <string name="delete_alarm_desc">Delete</string>
+
+    <!-- AlarmDismissScreen -->
+    <string name="scan_to_dismiss_title">Scan to Dismiss</string>
+    <string name="rise_and_shine">Rise and Shine!</string>
+    <string name="solve_challenge_instruction">Solve the challenge to stop the alarm</string>
+    <string name="answer_placeholder">Answer&#8230;</string>
+    <string name="dismiss_alarm_button">Dismiss Alarm</string>
+
+    <!-- AddEditAlarmScreen -->
+    <string name="set_alarm_title">Set Alarm</string>
+    <string name="back_button_desc">Back</string>
+    <string name="save_alarm_button">Save Alarm</string>
+    <string name="wakeup_challenge_title">Wake-up Challenge</string>
+    <string name="wakeup_challenge_subtitle">Choose how you want to wake up</string>
+    <string name="math_challenge_title">Math Genius</string>
+    <string name="math_challenge_desc">Solve arithmetic to stop the alarm</string>
+    <string name="barcode_challenge_title">Barcode Hunter</string>
+    <string name="barcode_challenge_desc">Scan a specific item in your home</string>
+    <string name="scan_item_to_register">Scan Item to Register</string>
+    <string name="barcode_format">Barcode: %1$s</string>
+    <string name="rescan_button">Rescan</string>
+    <string name="register_barcode_title">Register Barcode</string>
+    <string name="scan_barcode_instruction">Scan a barcode to link it to this alarm</string>
+
+    <!-- AlarmViewModel -->
+    <string name="error_wrong_barcode">Wrong barcode! Scanned: %1$s</string>
+    <string name="error_incorrect_answer">Incorrect answer, try again!</string>
+
+    <!-- AlarmService -->
+    <string name="notification_dismiss_text">Solve the challenge to dismiss the alarm.</string>
+    <string name="channel_name">Alarm Service Channel</string>
+    <string name="channel_description">Channel for Alarm Service notifications</string>
+
+    <!-- MainActivity -->
+    <string name="snackbar_alarm_deleted">Alarm deleted</string>
+    <string name="snackbar_undo">Undo</string>
 </resources>

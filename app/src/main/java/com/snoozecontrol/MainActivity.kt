@@ -2,7 +2,6 @@ package com.snoozecontrol
 
 import android.Manifest
 import android.app.KeyguardManager
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -13,16 +12,34 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.service.AlarmService
+import com.snoozecontrol.ui.AddEditAlarmScreen
 import com.snoozecontrol.ui.AlarmDismissScreen
 import com.snoozecontrol.ui.AlarmScreen
 import com.snoozecontrol.ui.AlarmViewModel
+import com.snoozecontrol.ui.BarcodeRegistrationScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AlarmViewModel by viewModels()
@@ -33,15 +50,7 @@ class MainActivity : ComponentActivity() {
         setupLockScreenFlags()
         enableEdgeToEdge()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
-            }
-        }
-
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
-        }
+        requestAppPermissions()
 
         handleIntent(intent)
 
@@ -49,50 +58,159 @@ class MainActivity : ComponentActivity() {
             val alarms by viewModel.alarms.collectAsState()
             val nextAlarm by viewModel.nextAlarm.collectAsState()
             val dismissState by viewModel.dismissState.collectAsState()
+            val navController = rememberNavController()
+            val scope = rememberCoroutineScope()
+
+            LaunchedEffect(dismissState.challengeType) {
+                if (dismissState.challengeType != ChallengeType.NONE) {
+                    navController.navigate("dismiss_alarm") {
+                        popUpTo("alarm_list") { inclusive = false }
+                    }
+                } else {
+                    if (navController.currentDestination?.route == "dismiss_alarm") {
+                        navController.popBackStack("alarm_list", inclusive = false)
+                    }
+                }
+            }
 
             SnoozeControlTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (dismissState.challengeType != com.snoozecontrol.model.ChallengeType.NONE) {
-                        AlarmDismissScreen(
-                            challengeType = dismissState.challengeType,
-                            equation = dismissState.equation,
-                            answerInput = dismissState.input,
-                            errorMessage = dismissState.error,
-                            onAnswerChange = viewModel::onAnswerChange,
-                            onBarcodeScanned = { barcode ->
-                                viewModel.onBarcodeScanned(barcode) {
-                                    stopService(Intent(this@MainActivity, AlarmService::class.java))
-                                }
-                            },
-                            onDismissClick = {
-                                viewModel.checkAnswer {
-                                    stopService(Intent(this@MainActivity, AlarmService::class.java))
-                                }
-                            }
-                        )
-                    } else {
-                        AlarmScreen(
-                            alarms = alarms,
-                            nextAlarm = nextAlarm,
-                            onAddAlarm = { hour, minute, challengeType, barcode ->
-                                viewModel.addAlarm(
-                                    this@MainActivity,
-                                    hour,
-                                    minute,
-                                    challengeType,
-                                    barcode
+                    val snackbarHostState = remember { SnackbarHostState() }
+
+                    Scaffold(
+                        snackbarHost = { SnackbarHost(snackbarHostState) }
+                    ) { padding ->
+                        NavHost(
+                            navController = navController,
+                            startDestination = "alarm_list",
+                            modifier = Modifier.padding(padding)
+                        ) {
+                            composable("alarm_list") {
+                                AlarmScreen(
+                                    alarms = alarms,
+                                    nextAlarm = nextAlarm,
+                                    onAddClick = { navController.navigate("add_edit_alarm/-1") },
+                                    onEditClick = { id -> navController.navigate("add_edit_alarm/$id") },
+                                    onToggleAlarm = { id ->
+                                        viewModel.toggleAlarm(
+                                            this@MainActivity,
+                                            id
+                                        )
+                                    },
+                                    onDeleteAlarm = { alarm ->
+                                        viewModel.deleteAlarm(this@MainActivity, alarm)
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = getString(R.string.snackbar_alarm_deleted),
+                                                actionLabel = getString(R.string.snackbar_undo),
+                                                duration = SnackbarDuration.Short
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                viewModel.undoDelete(this@MainActivity)
+                                            }
+                                        }
+                                    }
                                 )
-                            },
-                            onToggleAlarm = { id ->
-                                viewModel.toggleAlarm(this@MainActivity, id)
                             }
-                        )
+
+                            composable(
+                                "add_edit_alarm/{alarmId}",
+                                arguments = listOf(navArgument("alarmId") {
+                                    type = NavType.IntType
+                                })
+                            ) { backStackEntry ->
+                                val alarmId = backStackEntry.arguments?.getInt("alarmId") ?: -1
+                                val alarm = alarms.find { it.id == alarmId }
+
+                                // Observe barcode result from registration screen
+                                val barcodeResult by backStackEntry.savedStateHandle
+                                    .getStateFlow<String?>("barcode_result", null).collectAsState()
+
+                                AddEditAlarmScreen(
+                                    initialHour = alarm?.hour ?: 7,
+                                    initialMinute = alarm?.minute ?: 0,
+                                    initialChallenge = alarm?.challengeType ?: ChallengeType.MATH,
+                                    initialBarcode = alarm?.targetBarcode,
+                                    resultBarcode = barcodeResult,
+                                    onSave = { h, m, type, barcode ->
+                                        if (alarmId == -1) {
+                                            viewModel.addAlarm(
+                                                this@MainActivity,
+                                                h,
+                                                m,
+                                                type,
+                                                barcode
+                                            )
+                                        } else {
+                                            viewModel.updateAlarmTime(
+                                                this@MainActivity,
+                                                alarmId,
+                                                h,
+                                                m,
+                                                type,
+                                                barcode
+                                            )
+                                        }
+                                        backStackEntry.savedStateHandle.remove<String>("barcode_result")
+                                        navController.popBackStack()
+                                    },
+                                    onBack = {
+                                        backStackEntry.savedStateHandle.remove<String>("barcode_result")
+                                        navController.popBackStack()
+                                    },
+                                    onRegisterBarcodeClick = { navController.navigate("register_barcode") }
+                                )
+                            }
+
+                            composable("register_barcode") {
+                                BarcodeRegistrationScreen(
+                                    onBarcodeScanned = { barcode ->
+                                        navController.previousBackStackEntry
+                                            ?.savedStateHandle
+                                            ?.set("barcode_result", barcode)
+                                        navController.popBackStack()
+                                    },
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
+
+                            composable("dismiss_alarm") {
+                                AlarmDismissScreen(
+                                    challengeType = dismissState.challengeType,
+                                    equation = dismissState.equation,
+                                    answerInput = dismissState.input,
+                                    errorMessage = dismissState.error,
+                                    onAnswerChange = viewModel::onAnswerChange,
+                                    onBarcodeScanned = { barcode ->
+                                        viewModel.onBarcodeScanned(barcode) {
+                                            dismissService()
+                                        }
+                                    },
+                                    onDismissClick = {
+                                        viewModel.checkAnswer {
+                                            dismissService()
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+
+    private fun dismissService() {
+        val intent = Intent(this, AlarmService::class.java).apply {
+            action = AlarmService.ACTION_DISMISS
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
     }
 
@@ -108,11 +226,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun requestAppPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
+        }
+    }
+
     private fun setupLockScreenFlags() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
-            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
             keyguardManager.requestDismissKeyguard(this, null)
         } else {
             @Suppress("DEPRECATION")

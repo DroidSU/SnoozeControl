@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.snoozecontrol.R
 import com.snoozecontrol.data.AlarmDatabase
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
@@ -38,9 +39,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val currentMinute = now.get(Calendar.MINUTE)
 
         activeAlarms.sortedWith(compareBy({
-            // Calculate minutes from now to alarm
             var diff = (it.hour * 60 + it.minute) - (currentHour * 60 + currentMinute)
-            if (diff <= 0) diff += 24 * 60 // If time has passed today, it's for tomorrow
+            if (diff <= 0) diff += 24 * 60
             diff
         })).firstOrNull()
     }.stateIn(
@@ -48,6 +48,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = null
     )
+
+    private var recentlyDeletedAlarm: AlarmItem? = null
 
     fun addAlarm(context: Context, hour: Int, minute: Int, challengeType: ChallengeType = ChallengeType.MATH, targetBarcode: String? = null) {
         viewModelScope.launch {
@@ -60,6 +62,29 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             )
             val id = alarmDao.insertAlarm(newAlarm)
             AndroidAlarmScheduler(context).schedule(newAlarm.copy(id = id.toInt()))
+        }
+    }
+
+    fun updateAlarmTime(
+        context: Context,
+        alarmId: Int,
+        hour: Int,
+        minute: Int,
+        challengeType: ChallengeType,
+        targetBarcode: String?
+    ) {
+        viewModelScope.launch {
+            val alarm = alarmDao.getAlarmById(alarmId) ?: return@launch
+            val updatedAlarm = alarm.copy(
+                hour = hour,
+                minute = minute,
+                challengeType = challengeType,
+                targetBarcode = targetBarcode
+            )
+            alarmDao.updateAlarm(updatedAlarm)
+            if (updatedAlarm.isEnabled) {
+                AndroidAlarmScheduler(context).schedule(updatedAlarm)
+            }
         }
     }
 
@@ -78,11 +103,23 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun removeAlarm(context: Context, alarmId: Int) {
+    fun deleteAlarm(context: Context, alarm: AlarmItem) {
         viewModelScope.launch {
-            alarms.value.find { it.id == alarmId }?.let {
-                alarmDao.deleteAlarm(it)
-                AndroidAlarmScheduler(context).cancel(it)
+            recentlyDeletedAlarm = alarm
+            alarmDao.deleteAlarm(alarm)
+            AndroidAlarmScheduler(context).cancel(alarm)
+        }
+    }
+
+    fun undoDelete(context: Context) {
+        recentlyDeletedAlarm?.let { alarm ->
+            viewModelScope.launch {
+                val id = alarmDao.insertAlarm(alarm.copy(id = 0))
+                val restoredAlarm = alarm.copy(id = id.toInt())
+                if (restoredAlarm.isEnabled) {
+                    AndroidAlarmScheduler(context).schedule(restoredAlarm)
+                }
+                recentlyDeletedAlarm = null
             }
         }
     }
@@ -91,6 +128,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     val dismissState: StateFlow<DismissState> = _dismissState.asStateFlow()
 
     fun triggerAlarm(alarmId: Int) {
+        if (_dismissState.value.challengeType != ChallengeType.NONE) return
+
         viewModelScope.launch {
             val alarm = alarmDao.getAlarmById(alarmId)
             if (alarm != null) {
@@ -112,7 +151,6 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } else {
-                // Fallback to math if alarm not found
                 generateNewMathProblem()
             }
         }
@@ -144,7 +182,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 onSuccess()
                 _dismissState.value = DismissState()
             } else {
-                _dismissState.update { it.copy(error = "Wrong barcode! Scanned: $value") }
+                _dismissState.update {
+                    it.copy(
+                        error = getApplication<Application>().getString(
+                            R.string.error_wrong_barcode,
+                            value
+                        )
+                    )
+                }
             }
         }
     }
@@ -159,9 +204,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         
         if (userTypedAnswer == currentState.correctAnswer) {
             onSuccess()
-            _dismissState.value = DismissState() // Reset
+            _dismissState.value = DismissState()
         } else {
-            _dismissState.update { it.copy(error = "Incorrect answer, try again!", input = "") }
+            _dismissState.update {
+                it.copy(
+                    error = getApplication<Application>().getString(R.string.error_incorrect_answer),
+                    input = ""
+                )
+            }
         }
     }
 }
