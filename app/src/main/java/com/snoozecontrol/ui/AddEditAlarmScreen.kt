@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,9 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,16 +44,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,73 +58,66 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.snoozecontrol.R
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.viewmodel.AddEditAlarmUiState
+import com.snoozecontrol.viewmodel.AddEditAlarmViewModel
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditAlarmScreen(
-    initialHour: Int = 7,
-    initialMinute: Int = 0,
-    initialChallenge: ChallengeType = ChallengeType.MATH,
-    initialBarcode: String? = null,
-    initialRepeatDays: String = "",
-    resultBarcode: String? = null,
-    onSave: (hour: Int, minute: Int, challengeType: ChallengeType, barcode: String?, repeatDays: String) -> Unit,
+    alarmId: Int = -1,
+    barcodeResult: String? = null,
+    viewModel: AddEditAlarmViewModel = viewModel(),
     onBack: () -> Unit,
     onRegisterBarcodeClick: () -> Unit
 ) {
-    // 12-hour format conversion
-    var isAm by remember { mutableStateOf(initialHour < 12) }
-    var selectedHour12 by remember {
-        mutableIntStateOf(
-            when {
-                initialHour == 0 -> 12
-                initialHour > 12 -> initialHour - 12
-                else -> initialHour
+    val context = LocalContext.current
+
+    LaunchedEffect(alarmId, barcodeResult) {
+        viewModel.loadAlarm(alarmId, barcodeResult)
+    }
+
+    val uiState by viewModel.uiState.collectAsState()
+
+    AddEditAlarmContent(
+        uiState = uiState,
+        onHourChange = viewModel::onHourChange,
+        onMinuteChange = viewModel::onMinuteChange,
+        onAmPmChange = viewModel::onAmPmChange,
+        onChallengeTypeChange = viewModel::onChallengeTypeChange,
+        onDaysChange = viewModel::onDaysChange,
+        onSave = {
+            viewModel.saveAlarm(context) {
+                onBack()
             }
-        )
-    }
-    var selectedMinute by remember { mutableIntStateOf(initialMinute) }
+        },
+        onBack = onBack,
+        onRegisterBarcodeClick = onRegisterBarcodeClick
+    )
+}
 
-    var selectedChallenge by remember { mutableStateOf(initialChallenge) }
-    var scannedBarcode by remember { mutableStateOf(initialBarcode) }
-
-    // Repeat schedule days: 1=Mon, 2=Tue, ..., 7=Sun
-    var selectedDays by remember {
-        mutableStateOf(
-            if (initialRepeatDays.isBlank()) emptySet()
-            else initialRepeatDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
-        )
-    }
-
-    LaunchedEffect(resultBarcode) {
-        if (resultBarcode != null) {
-            scannedBarcode = resultBarcode
-        }
-    }
-
-    // Convert 12h + AM/PM back to 24h
-    val final24Hour = remember(selectedHour12, isAm) {
-        when {
-            isAm && selectedHour12 == 12 -> 0
-            isAm -> selectedHour12
-            !isAm && selectedHour12 == 12 -> 12
-            else -> selectedHour12 + 12
-        }
-    }
-
-    val repeatDaysString = remember(selectedDays) {
-        selectedDays.sorted().joinToString(",")
-    }
-
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEditAlarmContent(
+    uiState: AddEditAlarmUiState,
+    onHourChange: (Int) -> Unit,
+    onMinuteChange: (Int) -> Unit,
+    onAmPmChange: (Boolean) -> Unit,
+    onChallengeTypeChange: (ChallengeType) -> Unit,
+    onDaysChange: (Set<Int>) -> Unit,
+    onSave: () -> Unit,
+    onBack: () -> Unit,
+    onRegisterBarcodeClick: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -153,28 +143,21 @@ fun AddEditAlarmScreen(
         bottomBar = {
             Surface(
                 color = MaterialTheme.colorScheme.background,
-                tonalElevation = 8.dp
+                tonalElevation = 8.dp,
+                modifier = Modifier.navigationBarsPadding()
             ) {
                 Button(
-                    onClick = {
-                        onSave(
-                            final24Hour,
-                            selectedMinute,
-                            selectedChallenge,
-                            scannedBarcode,
-                            repeatDaysString
-                        )
-                    },
+                    onClick = onSave,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
                         .height(56.dp),
                     shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    enabled = selectedChallenge != ChallengeType.BARCODE || scannedBarcode != null
+                    enabled = uiState.isSaveEnabled
                 ) {
                     Text(
                         stringResource(R.string.save_alarm_button),
@@ -190,171 +173,107 @@ fun AddEditAlarmScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // TIME SELECTION CARD
             TimePickerCard(
-                hour12 = selectedHour12,
-                minute = selectedMinute,
-                isAm = isAm,
-                onHourChange = { selectedHour12 = it },
-                onMinuteChange = { selectedMinute = it },
-                onAmPmChange = { isAm = it }
+                hour12 = uiState.hour12,
+                minute = uiState.minute,
+                isAm = uiState.isAm,
+                onHourChange = onHourChange,
+                onMinuteChange = onMinuteChange,
+                onAmPmChange = onAmPmChange
             )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // HERO WAKE-UP MISSION / CHALLENGE SECTION
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    text = "MISSION",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.wakeup_challenge_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.wakeup_challenge_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ChallengeCard(
+                        title = stringResource(R.string.math_challenge_title),
+                        description = stringResource(R.string.math_challenge_desc),
+                        icon = Icons.Default.Calculate,
+                        isSelected = uiState.challengeType == ChallengeType.MATH,
+                        showOpensScreenIndicator = false,
+                        onClick = { onChallengeTypeChange(ChallengeType.MATH) }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ChallengeCard(
+                        title = stringResource(R.string.barcode_challenge_title),
+                        description = if (uiState.targetBarcode != null)
+                            "Scan registered barcode to dismiss alarm."
+                        else
+                            stringResource(R.string.barcode_challenge_desc),
+                        icon = Icons.Default.QrCodeScanner,
+                        isSelected = uiState.challengeType == ChallengeType.BARCODE,
+                        showOpensScreenIndicator = true,
+                        registeredBarcode = uiState.targetBarcode,
+                        onRescanClick = onRegisterBarcodeClick,
+                        onClick = {
+                            onChallengeTypeChange(ChallengeType.BARCODE)
+                            if (uiState.targetBarcode == null) {
+                                onRegisterBarcodeClick()
+                            }
+                        }
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // REPEAT SCHEDULE SECTION
             RepeatScheduleCard(
-                selectedDays = selectedDays,
-                onDaysChange = { selectedDays = it }
+                selectedDays = uiState.selectedDays,
+                onDaysChange = onDaysChange
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // WAKE-UP CHALLENGE SECTION
-            Text(
-                text = stringResource(R.string.wakeup_challenge_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.align(Alignment.Start)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.wakeup_challenge_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Start)
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            ChallengeCard(
-                title = stringResource(R.string.math_challenge_title),
-                description = stringResource(R.string.math_challenge_desc),
-                icon = Icons.Default.Calculate,
-                isSelected = selectedChallenge == ChallengeType.MATH,
-                showOpensScreenIndicator = false,
-                onClick = { selectedChallenge = ChallengeType.MATH }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ChallengeCard(
-                title = stringResource(R.string.barcode_challenge_title),
-                description = stringResource(R.string.barcode_challenge_desc),
-                icon = Icons.Default.QrCodeScanner,
-                isSelected = selectedChallenge == ChallengeType.BARCODE,
-                showOpensScreenIndicator = true,
-                onClick = { selectedChallenge = ChallengeType.BARCODE }
-            )
-
-            if (selectedChallenge == ChallengeType.BARCODE) {
-                Spacer(modifier = Modifier.height(14.dp))
-                if (scannedBarcode == null) {
-                    Card(
-                        onClick = onRegisterBarcodeClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.QrCodeScanner,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.padding(8.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.scan_item_to_register),
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Text(
-                                        text = "Opens camera barcode scanner",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(
-                                            alpha = 0.7f
-                                        )
-                                    )
-                                }
-                            }
-                            Icon(
-                                Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                } else {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Barcode Registered",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = stringResource(
-                                        R.string.barcode_format,
-                                        scannedBarcode ?: ""
-                                    ),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                            TextButton(onClick = onRegisterBarcodeClick) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        stringResource(R.string.rescan_button),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(
-                                        Icons.AutoMirrored.Filled.OpenInNew,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -373,14 +292,14 @@ fun TimePickerCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -391,7 +310,7 @@ fun TimePickerCard(
                 modifier = Modifier.align(Alignment.Start)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Main Time Display
             val formattedTime = remember(hour12, minute) {
@@ -404,24 +323,24 @@ fun TimePickerCard(
             ) {
                 Text(
                     text = formattedTime,
-                    fontSize = 52.sp,
+                    fontSize = 42.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = amPmText,
-                    fontSize = 20.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Custom Wheel Selector Body
+            // Custom Compact Wheel Selector Body
             CustomDrumTimePicker(
                 hour12 = hour12,
                 minute = minute,
@@ -429,7 +348,7 @@ fun TimePickerCard(
                 onMinuteChange = onMinuteChange
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // AM / PM Segmented Switch Pill
             AmPmSegmentedControl(isAm = isAm, onAmPmChange = onAmPmChange)
@@ -444,14 +363,14 @@ fun AmPmSegmentedControl(
     onAmPmChange: (Boolean) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
-            .fillMaxWidth(0.85f)
-            .height(48.dp)
+            .fillMaxWidth(0.8f)
+            .height(40.dp)
     ) {
         Row(
-            modifier = Modifier.padding(4.dp),
+            modifier = Modifier.padding(3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val amBg by animateColorAsState(
@@ -466,16 +385,16 @@ fun AmPmSegmentedControl(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(13.dp))
                     .background(amBg)
                     .clickable { onAmPmChange(true) }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "AM",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     color = if (isAm) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -483,16 +402,16 @@ fun AmPmSegmentedControl(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(13.dp))
                     .background(pmBg)
                     .clickable { onAmPmChange(false) }
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "PM",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     color = if (!isAm) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -511,7 +430,7 @@ fun CustomDrumTimePicker(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp),
+            .height(135.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -526,10 +445,10 @@ fun CustomDrumTimePicker(
 
         Text(
             text = ":",
-            fontSize = 32.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 6.dp)
         )
 
         // Minute Wheel (0..59)
@@ -575,15 +494,15 @@ fun WheelColumn(
     }
 
     Box(
-        modifier = modifier.height(170.dp),
+        modifier = modifier.height(135.dp),
         contentAlignment = Alignment.Center
     ) {
         // Selection Center Bar Highlight
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.75f)
-                .height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+                .fillMaxWidth(0.7f)
+                .height(44.dp),
+            shape = RoundedCornerShape(14.dp),
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
         ) {}
@@ -604,19 +523,19 @@ fun WheelColumn(
                     label = "wheelAlpha"
                 )
                 val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.2f else 0.85f,
+                    targetValue = if (isSelected) 1.18f else 0.85f,
                     label = "wheelScale"
                 )
 
                 Box(
                     modifier = Modifier
-                        .height(56.dp)
+                        .height(45.dp)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = format(itemValue),
-                        fontSize = 24.sp,
+                        fontSize = 22.sp,
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
@@ -635,6 +554,21 @@ fun RepeatScheduleCard(
     selectedDays: Set<Int>,
     onDaysChange: (Set<Int>) -> Unit
 ) {
+    val isOnce = selectedDays.isEmpty()
+    val isDaily = selectedDays.size == 7
+    val isWeekdays = selectedDays == setOf(1, 2, 3, 4, 5)
+    val isWeekends = selectedDays == setOf(6, 7)
+
+    val summaryText = remember(selectedDays) {
+        when {
+            selectedDays.isEmpty() -> "Ring once only"
+            selectedDays.size == 7 -> "Every day"
+            selectedDays == setOf(1, 2, 3, 4, 5) -> "Monday to Friday"
+            selectedDays == setOf(6, 7) -> "Saturday and Sunday"
+            else -> "Custom days selected"
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -650,6 +584,11 @@ fun RepeatScheduleCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Text(
+                text = summaryText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -660,11 +599,6 @@ fun RepeatScheduleCard(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val isOnce = selectedDays.isEmpty()
-                val isDaily = selectedDays.size == 7
-                val isWeekdays = selectedDays == setOf(1, 2, 3, 4, 5)
-                val isWeekends = selectedDays == setOf(6, 7)
-
                 FilterChip(
                     selected = isOnce,
                     onClick = { onDaysChange(emptySet()) },
@@ -722,7 +656,7 @@ fun RepeatScheduleCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Days of Week Pills: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
             val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -746,11 +680,12 @@ fun RepeatScheduleCard(
                             .clip(CircleShape)
                             .background(bg)
                             .clickable {
-                                if (isSelected) {
-                                    onDaysChange(selectedDays - dayNum)
+                                val newDays = if (isSelected) {
+                                    selectedDays - dayNum
                                 } else {
-                                    onDaysChange(selectedDays + dayNum)
+                                    selectedDays + dayNum
                                 }
+                                onDaysChange(newDays)
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -774,8 +709,20 @@ fun RepeatScheduleCard(
 @Composable
 fun AddEditAlarmScreenPreview() {
     SnoozeControlTheme {
-        AddEditAlarmScreen(
-            onSave = { _, _, _, _, _ -> },
+        AddEditAlarmContent(
+            uiState = AddEditAlarmUiState(
+                hour12 = 7,
+                minute = 30,
+                isAm = true,
+                challengeType = ChallengeType.MATH,
+                selectedDays = setOf(1, 2, 3, 4, 5)
+            ),
+            onHourChange = {},
+            onMinuteChange = {},
+            onAmPmChange = {},
+            onChallengeTypeChange = {},
+            onDaysChange = {},
+            onSave = {},
             onBack = {},
             onRegisterBarcodeClick = {}
         )

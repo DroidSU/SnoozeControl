@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,11 +37,11 @@ import com.snoozecontrol.service.AlarmService
 import com.snoozecontrol.ui.AddEditAlarmScreen
 import com.snoozecontrol.ui.AlarmDismissScreen
 import com.snoozecontrol.ui.AlarmScreen
-import com.snoozecontrol.ui.AlarmViewModel
 import com.snoozecontrol.ui.BarcodeRegistrationScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.viewmodel.AddEditAlarmViewModel
+import com.snoozecontrol.viewmodel.AlarmViewModel
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AlarmViewModel by viewModels()
@@ -122,51 +123,22 @@ class MainActivity : ComponentActivity() {
                                 })
                             ) { backStackEntry ->
                                 val alarmId = backStackEntry.arguments?.getInt("alarmId") ?: -1
-                                val alarm = alarms.find { it.id == alarmId }
-
                                 val barcodeResult by backStackEntry.savedStateHandle
                                     .getStateFlow<String?>("barcode_result", null).collectAsState()
 
-                                val calendar = Calendar.getInstance().apply {
-                                    add(Calendar.MINUTE, 1)
-                                }
+                                val addEditViewModel: AddEditAlarmViewModel = viewModel()
 
                                 AddEditAlarmScreen(
-                                    initialHour = alarm?.hour ?: calendar.get(Calendar.HOUR_OF_DAY),
-                                    initialMinute = alarm?.minute ?: calendar.get(Calendar.MINUTE),
-                                    initialChallenge = alarm?.challengeType ?: ChallengeType.MATH,
-                                    initialBarcode = alarm?.targetBarcode,
-                                    initialRepeatDays = alarm?.repeatDays ?: "",
-                                    resultBarcode = barcodeResult,
-                                    onSave = { h, m, type, barcode, repeatDays ->
-                                        if (alarmId == -1) {
-                                            viewModel.addAlarm(
-                                                this@MainActivity,
-                                                h,
-                                                m,
-                                                type,
-                                                barcode,
-                                                repeatDays
-                                            )
-                                        } else {
-                                            viewModel.updateAlarmTime(
-                                                this@MainActivity,
-                                                alarmId,
-                                                h,
-                                                m,
-                                                type,
-                                                barcode,
-                                                repeatDays
-                                            )
-                                        }
+                                    alarmId = alarmId,
+                                    barcodeResult = barcodeResult,
+                                    viewModel = addEditViewModel,
+                                    onBack = {
                                         backStackEntry.savedStateHandle.remove<String>("barcode_result")
                                         navController.popBackStack()
                                     },
-                                    onBack = { 
-                                        backStackEntry.savedStateHandle.remove<String>("barcode_result")
-                                        navController.popBackStack() 
-                                    },
-                                    onRegisterBarcodeClick = { navController.navigate("register_barcode") }
+                                    onRegisterBarcodeClick = {
+                                        navController.navigate("register_barcode")
+                                    }
                                 )
                             }
 

@@ -1,4 +1,4 @@
-package com.snoozecontrol.ui
+package com.snoozecontrol.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -22,7 +22,7 @@ import java.util.Calendar
 
 class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
-    
+
     val alarms: StateFlow<List<AlarmItem>> = alarmDao.getAllAlarms()
         .stateIn(
             scope = viewModelScope,
@@ -103,7 +103,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             val alarm = alarms.value.find { it.id == alarmId } ?: return@launch
             val updatedAlarm = alarm.copy(isEnabled = !alarm.isEnabled)
             alarmDao.updateAlarm(updatedAlarm)
-            
+
             val scheduler = AndroidAlarmScheduler(context)
             if (updatedAlarm.isEnabled) {
                 scheduler.schedule(updatedAlarm)
@@ -170,17 +170,17 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val num1 = (1..20).random()
         val num2 = (1..20).random()
         val operator = listOf("+", "-", "*").random()
-        
+
         val (equation, answer) = when (operator) {
             "+" -> "$num1 + $num2" to (num1 + num2)
             "-" -> "$num1 - $num2" to (num1 - num2)
             "*" -> "$num1 * $num2" to (num1 * num2)
             else -> "$num1 + $num2" to (num1 + num2)
         }
-        
+
         _dismissState.value = DismissState(
             challengeType = ChallengeType.MATH,
-            equation = equation, 
+            equation = equation,
             correctAnswer = answer
         )
     }
@@ -211,7 +211,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     fun checkAnswer(onSuccess: () -> Unit) {
         val currentState = _dismissState.value
         val userTypedAnswer = currentState.input.toIntOrNull()
-        
+
         if (userTypedAnswer == currentState.correctAnswer) {
             onSuccess()
             _dismissState.value = DismissState()
