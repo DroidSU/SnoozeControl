@@ -14,30 +14,50 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = SunsetCoral,
+    onPrimary = Color(0xFF3E1205),
+    primaryContainer = PrimaryContainerDark,
+    onPrimaryContainer = OnPrimaryContainerDark,
     secondary = SoftLavender,
+    onSecondary = Color(0xFF1B1246),
+    secondaryContainer = SecondaryContainerDark,
+    onSecondaryContainer = OnSecondaryContainerDark,
     tertiary = MorningGold,
+    onTertiary = Color(0xFF3B2D00),
+    tertiaryContainer = Color(0xFF423714),
+    onTertiaryContainer = Color(0xFFFFEFA7),
     background = MidnightAbyss,
+    onBackground = OnSurfaceDark,
     surface = SteelNavy,
-    onPrimary = Color.Black,
-    onSecondary = Color.Black,
-    onTertiary = Color.Black,
-    onBackground = CloudWhite,
-    onSurface = CloudWhite,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = OutlineDark,
+    outlineVariant = OutlineVariantDark,
     error = ErrorRed,
     onError = Color.Black
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = SunsetCoral,
-    secondary = ElectricIndigo,
-    tertiary = SoftPeach,
-    background = CloudWhite,
-    surface = Color.White,
     onPrimary = Color.White,
+    primaryContainer = PrimaryContainerLight,
+    onPrimaryContainer = OnPrimaryContainerLight,
+    secondary = ElectricIndigo,
     onSecondary = Color.White,
+    secondaryContainer = SecondaryContainerLight,
+    onSecondaryContainer = OnSecondaryContainerLight,
+    tertiary = SoftPeach,
     onTertiary = Color.Black,
+    tertiaryContainer = Color(0xFFFFF0E5),
+    onTertiaryContainer = Color(0xFF3D1800),
+    background = CloudWhite,
     onBackground = MidnightAbyss,
+    surface = Color.White,
     onSurface = MidnightAbyss,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = Color(0xFFCBD5E1),
+    outlineVariant = Color(0xFFE2E8F0),
     error = ErrorRed,
     onError = Color.White
 )
@@ -45,11 +65,9 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun SnoozeControlTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Set to false to prioritize our custom palette
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    // Dynamic color logic removed to simplify and enforce palette
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     val view = LocalView.current

@@ -136,15 +136,17 @@ class MainActivity : ComponentActivity() {
                                     initialMinute = alarm?.minute ?: calendar.get(Calendar.MINUTE),
                                     initialChallenge = alarm?.challengeType ?: ChallengeType.MATH,
                                     initialBarcode = alarm?.targetBarcode,
+                                    initialRepeatDays = alarm?.repeatDays ?: "",
                                     resultBarcode = barcodeResult,
-                                    onSave = { h, m, type, barcode ->
+                                    onSave = { h, m, type, barcode, repeatDays ->
                                         if (alarmId == -1) {
                                             viewModel.addAlarm(
                                                 this@MainActivity,
                                                 h,
                                                 m,
                                                 type,
-                                                barcode
+                                                barcode,
+                                                repeatDays
                                             )
                                         } else {
                                             viewModel.updateAlarmTime(
@@ -153,7 +155,8 @@ class MainActivity : ComponentActivity() {
                                                 h,
                                                 m,
                                                 type,
-                                                barcode
+                                                barcode,
+                                                repeatDays
                                             )
                                         }
                                         backStackEntry.savedStateHandle.remove<String>("barcode_result")

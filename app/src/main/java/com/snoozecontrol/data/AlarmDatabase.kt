@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.snoozecontrol.model.AlarmItem
 
-@Database(entities = [AlarmItem::class], version = 2, exportSchema = false)
+@Database(entities = [AlarmItem::class], version = 3, exportSchema = false)
 abstract class AlarmDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
 

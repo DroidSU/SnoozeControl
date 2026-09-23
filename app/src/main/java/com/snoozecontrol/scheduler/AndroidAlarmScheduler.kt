@@ -31,16 +31,7 @@ class AndroidAlarmScheduler(
             putExtra("ALARM_ID", item.id)
         }
 
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, item.hour)
-            set(Calendar.MINUTE, item.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-        }
+        val calendar = calculateNextAlarmCalendar(item)
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -102,5 +93,48 @@ class AndroidAlarmScheduler(
         )
         alarmManager.cancel(pendingIntent)
         Log.d("AlarmScheduler", "Canceled alarm ${item.id}")
+    }
+
+    private fun calculateNextAlarmCalendar(item: AlarmItem): Calendar {
+        val now = Calendar.getInstance()
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, item.hour)
+            set(Calendar.MINUTE, item.minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val days = item.selectedDays
+        if (days.isEmpty()) {
+            if (calendar.before(now)) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+            }
+            return calendar
+        }
+
+        val calDayMap = mapOf(
+            1 to Calendar.MONDAY,
+            2 to Calendar.TUESDAY,
+            3 to Calendar.WEDNESDAY,
+            4 to Calendar.THURSDAY,
+            5 to Calendar.FRIDAY,
+            6 to Calendar.SATURDAY,
+            7 to Calendar.SUNDAY
+        )
+        val targetCalDays = days.mapNotNull { calDayMap[it] }.toSet()
+
+        for (i in 0..7) {
+            val testCal = calendar.clone() as Calendar
+            testCal.add(Calendar.DAY_OF_YEAR, i)
+            if (i == 0 && testCal.before(now)) continue
+            if (testCal.get(Calendar.DAY_OF_WEEK) in targetCalDays) {
+                return testCal
+            }
+        }
+
+        if (calendar.before(now)) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return calendar
     }
 }

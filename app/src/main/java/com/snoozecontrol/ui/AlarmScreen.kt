@@ -409,14 +409,15 @@ fun AlarmItemRow(
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 )
 
-                if (alarm.isEnabled) {
-                    Text(
-                        text = "Tomorrow morning",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text(
+                    text = alarm.getRepeatSummary(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (alarm.isEnabled)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
             Switch(

@@ -51,14 +51,22 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
 
     private var recentlyDeletedAlarm: AlarmItem? = null
 
-    fun addAlarm(context: Context, hour: Int, minute: Int, challengeType: ChallengeType = ChallengeType.MATH, targetBarcode: String? = null) {
+    fun addAlarm(
+        context: Context,
+        hour: Int,
+        minute: Int,
+        challengeType: ChallengeType = ChallengeType.MATH,
+        targetBarcode: String? = null,
+        repeatDays: String = ""
+    ) {
         viewModelScope.launch {
             val newAlarm = AlarmItem(
                 hour = hour,
                 minute = minute,
                 isEnabled = true,
                 challengeType = challengeType,
-                targetBarcode = targetBarcode
+                targetBarcode = targetBarcode,
+                repeatDays = repeatDays
             )
             val id = alarmDao.insertAlarm(newAlarm)
             AndroidAlarmScheduler(context).schedule(newAlarm.copy(id = id.toInt()))
@@ -71,7 +79,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         hour: Int,
         minute: Int,
         challengeType: ChallengeType,
-        targetBarcode: String?
+        targetBarcode: String?,
+        repeatDays: String = ""
     ) {
         viewModelScope.launch {
             val alarm = alarmDao.getAlarmById(alarmId) ?: return@launch
@@ -79,7 +88,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 hour = hour,
                 minute = minute,
                 challengeType = challengeType,
-                targetBarcode = targetBarcode
+                targetBarcode = targetBarcode,
+                repeatDays = repeatDays
             )
             alarmDao.updateAlarm(updatedAlarm)
             if (updatedAlarm.isEnabled) {
