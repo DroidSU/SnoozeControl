@@ -10,6 +10,7 @@ import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.model.DismissState
 import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import com.snoozecontrol.util.WeatherInfo
 import com.snoozecontrol.util.WeatherRepository
 import kotlinx.coroutines.Dispatchers
@@ -30,22 +31,12 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
 
     private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
 
-    init {
-        getCurrentWeather()
-    }
-
     val alarms: StateFlow<List<AlarmItem>> = alarmDao.getAllAlarms()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
-
-    fun getCurrentWeather() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(getApplication())
-        }
-    }
 
     val nextAlarm: StateFlow<AlarmItem?> = alarms.map { alarmList ->
         val activeAlarms = alarmList.filter { it.isEnabled }
@@ -65,6 +56,24 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = null
     )
+
+    fun getCurrentWeather() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(getApplication())
+        }
+    }
+
+    init {
+        getCurrentWeather()
+        viewModelScope.launch {
+            nextAlarm.collect { alarm ->
+                UpcomingAlarmNotificationManager.updateUpcomingAlarmNotification(
+                    getApplication(),
+                    alarm
+                )
+            }
+        }
+    }
 
     private var recentlyDeletedAlarm: AlarmItem? = null
 

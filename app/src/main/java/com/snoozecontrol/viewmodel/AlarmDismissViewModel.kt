@@ -176,7 +176,15 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
             if (alarmId != -1) {
                 val alarm = alarmDao.getAlarmById(alarmId)
                 if (alarm != null) {
-                    alarmDao.updateAlarm(alarm.copy(snoozeCount = 0))
+                    val isOnce = alarm.isOnce
+                    val updatedAlarm = alarm.copy(
+                        snoozeCount = 0,
+                        isEnabled = if (isOnce) false else alarm.isEnabled
+                    )
+                    alarmDao.updateAlarm(updatedAlarm)
+                    if (isOnce) {
+                        AndroidAlarmScheduler(getApplication()).cancel(updatedAlarm)
+                    }
                 }
             }
             _uiState.update {

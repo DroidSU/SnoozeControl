@@ -9,12 +9,10 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.snoozecontrol.api.KtorWeatherApiClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 
@@ -74,49 +72,33 @@ object WeatherRepository {
         var lat = 40.7128 // Default New York latitude
         var lon = -74.0060 // Default New York longitude
 
-        // 1. Fetch fresh location fix if permissions are granted
-        val currentLocation = getFreshLocation(context)
-        if (currentLocation != null) {
-            lat = currentLocation.latitude
-            lon = currentLocation.longitude
-        } else {
-            Log.w(
-                "WeatherService",
-                "Could not acquire location fix. Falling back to default coordinates."
-            )
-        }
-
-        // 2. Query weather data
         try {
-            val urlString =
-                "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code"
-            val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 5000
-                readTimeout = 5000
+            // 1. Fetch fresh location fix if permissions are granted
+            val currentLocation = getFreshLocation(context)
+            if (currentLocation != null) {
+                lat = currentLocation.latitude
+                lon = currentLocation.longitude
+            } else {
+                Log.w(
+                    "WeatherService",
+                    "Could not acquire location fix. Falling back to default coordinates."
+                )
             }
 
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
-                connection.disconnect()
-
-                val rootObj = JSONObject(jsonString)
-                val currentObj = rootObj.getJSONObject("current")
-                val temp = currentObj.getDouble("temperature_2m").roundToInt()
-                val code = currentObj.optInt("weather_code", 0)
-
+            // 2. Query weather data via Ktor API Client
+            val dto = KtorWeatherApiClient.fetchWeather(lat, lon)
+            if (dto?.current != null) {
+                val temp = dto.current.temperature2m.roundToInt()
+                val code = dto.current.weatherCode
                 val condition = mapWeatherCodeToText(code)
                 return@withContext WeatherInfo(
                     temperatureCelsius = temp,
                     conditionText = condition,
                     isSuccess = true
                 )
-            } else {
-                Log.e("WeatherService", "HTTP Error response code: ${connection.responseCode}")
-                connection.disconnect()
             }
-        } catch (e: Exception) {
-            Log.e("WeatherService", "Network or parsing error occurred", e)
+        } catch (e: Throwable) {
+            Log.e("WeatherService", "Network or location error occurred during weather fetch", e)
         }
 
         // Fallback response on network or parsing failure

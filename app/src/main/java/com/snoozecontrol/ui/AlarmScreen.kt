@@ -302,11 +302,12 @@ fun SwipeToDismissRow(
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {
+            val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart ||
+                    dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+
             val color by animateColorAsState(
-                when (dismissState.targetValue) {
-                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
-                    else -> Color.Transparent
-                }, label = "dismissColor"
+                if (isSwiping) MaterialTheme.colorScheme.errorContainer else Color.Transparent,
+                label = "dismissColor"
             )
             Box(
                 Modifier
@@ -316,11 +317,13 @@ fun SwipeToDismissRow(
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.delete_alarm_desc),
-                    tint = MaterialTheme.colorScheme.onErrorContainer
-                )
+                if (isSwiping) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.delete_alarm_desc),
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         },
         enableDismissFromStartToEnd = false,
@@ -340,13 +343,10 @@ fun AlarmItemRow(
     onToggle: () -> Unit,
     onClick: () -> Unit
 ) {
-    val containerColor by animateColorAsState(
-        targetValue = if (alarm.isEnabled)
-            MaterialTheme.colorScheme.surface
-        else
-            MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-        label = "containerColor"
-    )
+    val containerColor = if (alarm.isEnabled)
+        MaterialTheme.colorScheme.surface
+    else
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f)
 
     val contentAlpha by animateFloatAsState(
         targetValue = if (alarm.isEnabled) 1f else 0.4f,
