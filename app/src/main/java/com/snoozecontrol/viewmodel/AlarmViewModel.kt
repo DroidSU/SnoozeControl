@@ -188,7 +188,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     fun onBarcodeScanned(value: String, onSuccess: () -> Unit) {
         val currentState = _dismissState.value
         if (currentState.challengeType == ChallengeType.BARCODE) {
-            if (value == currentState.targetBarcode) {
+            val scannedClean = value.trim()
+            val targetClean = currentState.targetBarcode?.trim().orEmpty()
+
+            if (scannedClean.isNotEmpty() && scannedClean == targetClean) {
                 onSuccess()
                 _dismissState.value = DismissState()
             } else {
@@ -196,7 +199,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         error = getApplication<Application>().getString(
                             R.string.error_wrong_barcode,
-                            value
+                            scannedClean
                         )
                     )
                 }

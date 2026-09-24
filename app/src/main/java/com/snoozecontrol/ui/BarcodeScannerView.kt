@@ -17,13 +17,16 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.snoozecontrol.util.BarcodeScanner
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun BarcodeScannerView(
     modifier: Modifier = Modifier,
+    debounceMs: Long = 1500L,
     onBarcodeDetected: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -40,12 +43,12 @@ fun BarcodeScannerView(
     AndroidView(
         factory = { ctx ->
             val previewView = PreviewView(ctx)
-            val isDetected = AtomicBoolean(false)
+            val isProcessing = AtomicBoolean(false)
             
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
                 val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
+                    it.surfaceProvider = previewView.surfaceProvider
                 }
 
                 val imageAnalysis = ImageAnalysis.Builder()
@@ -53,9 +56,11 @@ fun BarcodeScannerView(
                     .build()
                     .also {
                         it.setAnalyzer(analysisExecutor, BarcodeScanner { barcode ->
-                            if (isDetected.compareAndSet(false, true)) {
+                            if (isProcessing.compareAndSet(false, true)) {
                                 lifecycleOwner.lifecycleScope.launch {
                                     onBarcodeDetected(barcode)
+                                    delay(debounceMs.milliseconds)
+                                    isProcessing.set(false)
                                 }
                             }
                         })

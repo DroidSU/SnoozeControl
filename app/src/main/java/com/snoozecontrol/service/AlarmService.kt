@@ -12,7 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
-import com.snoozecontrol.MainActivity
+import com.snoozecontrol.AlarmDismissActivity
 import com.snoozecontrol.R
 
 class AlarmService : Service() {
@@ -33,12 +33,8 @@ class AlarmService : Service() {
         acquireWakeLock()
         
         val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
-        
-        val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            putExtra("ALARM_TRIGGERED", true)
-            putExtra("ALARM_ID", alarmId)
-        }
+
+        val fullScreenIntent = AlarmDismissActivity.createIntent(this, alarmId)
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this, 0, fullScreenIntent,

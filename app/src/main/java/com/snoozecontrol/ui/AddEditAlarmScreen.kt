@@ -1,7 +1,6 @@
 package com.snoozecontrol.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,7 +47,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -58,56 +56,21 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.snoozecontrol.R
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.viewmodel.AddEditAlarmUiState
-import com.snoozecontrol.viewmodel.AddEditAlarmViewModel
 import java.util.Locale
-
-@Composable
-fun AddEditAlarmScreen(
-    alarmId: Int = -1,
-    barcodeResult: String? = null,
-    viewModel: AddEditAlarmViewModel = viewModel(),
-    onBack: () -> Unit,
-    onRegisterBarcodeClick: () -> Unit
-) {
-    val context = LocalContext.current
-
-    LaunchedEffect(alarmId, barcodeResult) {
-        viewModel.loadAlarm(alarmId, barcodeResult)
-    }
-
-    val uiState by viewModel.uiState.collectAsState()
-
-    AddEditAlarmContent(
-        uiState = uiState,
-        onHourChange = viewModel::onHourChange,
-        onMinuteChange = viewModel::onMinuteChange,
-        onAmPmChange = viewModel::onAmPmChange,
-        onChallengeTypeChange = viewModel::onChallengeTypeChange,
-        onDaysChange = viewModel::onDaysChange,
-        onSave = {
-            viewModel.saveAlarm(context) {
-                onBack()
-            }
-        },
-        onBack = onBack,
-        onRegisterBarcodeClick = onRegisterBarcodeClick
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEditAlarmContent(
+fun AddEditAlarmScreen(
     uiState: AddEditAlarmUiState,
     onHourChange: (Int) -> Unit,
     onMinuteChange: (Int) -> Unit,
@@ -119,6 +82,9 @@ fun AddEditAlarmContent(
     onRegisterBarcodeClick: () -> Unit
 ) {
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer(),
         topBar = {
             TopAppBar(
                 title = {
@@ -472,8 +438,8 @@ fun WheelColumn(
 ) {
     val items = remember(range) { range.toList() }
     val count = items.size
-    val infiniteCount = count * 100
-    val initialIndex = remember(items) {
+    val infiniteCount = count * 10
+    val initialIndex = remember(selectedValue) {
         val base = (infiniteCount / 2) - ((infiniteCount / 2) % count)
         val itemOffset = items.indexOf(selectedValue).coerceAtLeast(0)
         (base + itemOffset - 1).coerceAtLeast(0)
@@ -485,10 +451,12 @@ fun WheelColumn(
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .collect { firstVisible ->
-                val centerIndex = firstVisible + 1
-                val actualValue = items[centerIndex % count]
-                if (actualValue != selectedValue && listState.isScrollInProgress) {
-                    onValueChange(actualValue)
+                if (listState.isScrollInProgress) {
+                    val centerIndex = firstVisible + 1
+                    val actualValue = items[centerIndex % count]
+                    if (actualValue != selectedValue) {
+                        onValueChange(actualValue)
+                    }
                 }
             }
     }
@@ -514,18 +482,15 @@ fun WheelColumn(
             horizontalAlignment = Alignment.CenterHorizontally,
             contentPadding = PaddingValues(vertical = 0.dp)
         ) {
-            items(infiniteCount) { index ->
+            items(
+                count = infiniteCount,
+                key = { index -> index }
+            ) { index ->
                 val itemValue = items[index % count]
                 val isSelected = itemValue == selectedValue
 
-                val alpha by animateFloatAsState(
-                    targetValue = if (isSelected) 1f else 0.35f,
-                    label = "wheelAlpha"
-                )
-                val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.18f else 0.85f,
-                    label = "wheelScale"
-                )
+                val alpha = if (isSelected) 1f else 0.35f
+                val scale = if (isSelected) 1.18f else 0.85f
 
                 Box(
                     modifier = Modifier
@@ -709,7 +674,7 @@ fun RepeatScheduleCard(
 @Composable
 fun AddEditAlarmScreenPreview() {
     SnoozeControlTheme {
-        AddEditAlarmContent(
+        AddEditAlarmScreen(
             uiState = AddEditAlarmUiState(
                 hour12 = 7,
                 minute = 30,

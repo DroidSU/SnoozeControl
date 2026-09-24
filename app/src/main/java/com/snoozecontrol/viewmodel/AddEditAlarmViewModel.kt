@@ -46,7 +46,7 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
     private val _uiState = MutableStateFlow(AddEditAlarmUiState())
     val uiState: StateFlow<AddEditAlarmUiState> = _uiState.asStateFlow()
 
-    fun loadAlarm(alarmId: Int, barcodeResult: String? = null) {
+    fun initAlarm(alarm: AlarmItem?, barcodeResult: String? = null) {
         if (_uiState.value.isLoaded) {
             if (barcodeResult != null) {
                 _uiState.update { it.copy(targetBarcode = barcodeResult) }
@@ -54,33 +54,27 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
             return
         }
 
-        viewModelScope.launch {
-            if (alarmId != -1) {
-                val alarm = alarmDao.getAlarmById(alarmId)
-                if (alarm != null) {
-                    val isAm = alarm.hour < 12
-                    val hour12 = when {
-                        alarm.hour == 0 -> 12
-                        alarm.hour > 12 -> alarm.hour - 12
-                        else -> alarm.hour
-                    }
-                    val days = if (alarm.repeatDays.isBlank()) emptySet()
-                    else alarm.repeatDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
-
-                    _uiState.value = AddEditAlarmUiState(
-                        alarmId = alarmId,
-                        hour12 = hour12,
-                        minute = alarm.minute,
-                        isAm = isAm,
-                        challengeType = alarm.challengeType,
-                        targetBarcode = barcodeResult ?: alarm.targetBarcode,
-                        selectedDays = days,
-                        isLoaded = true
-                    )
-                    return@launch
-                }
+        if (alarm != null) {
+            val isAm = alarm.hour < 12
+            val hour12 = when {
+                alarm.hour == 0 -> 12
+                alarm.hour > 12 -> alarm.hour - 12
+                else -> alarm.hour
             }
+            val days = if (alarm.repeatDays.isBlank()) emptySet()
+            else alarm.repeatDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
 
+            _uiState.value = AddEditAlarmUiState(
+                alarmId = alarm.id,
+                hour12 = hour12,
+                minute = alarm.minute,
+                isAm = isAm,
+                challengeType = alarm.challengeType,
+                targetBarcode = barcodeResult ?: alarm.targetBarcode,
+                selectedDays = days,
+                isLoaded = true
+            )
+        } else {
             // Default time for new alarm (now + 1 min)
             val cal = Calendar.getInstance().apply { add(Calendar.MINUTE, 1) }
             val h24 = cal.get(Calendar.HOUR_OF_DAY)
