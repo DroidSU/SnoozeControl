@@ -38,6 +38,7 @@ class AlarmDismissActivity : ComponentActivity() {
 
         setContent {
             val uiState by viewModel.uiState.collectAsState()
+            val weatherInfo by viewModel.weatherInfo.collectAsState()
 
             LaunchedEffect(uiState.isDismissed) {
                 if (uiState.isDismissed) {
@@ -55,7 +56,7 @@ class AlarmDismissActivity : ComponentActivity() {
                 ) {
                     if (uiState.showMorningDashboard) {
                         MorningDashboardScreen(
-                            weatherInfo = uiState.weatherInfo,
+                            weatherInfo = weatherInfo,
                             isWeatherLoading = uiState.isWeatherLoading,
                             quote = uiState.quote,
                             onStartDayClick = { finish() }
@@ -75,7 +76,8 @@ class AlarmDismissActivity : ComponentActivity() {
                                 viewModel.onBarcodeScanned(scannedBarcode) {}
                             },
                             onDismissClick = {
-                                viewModel.checkMathAnswer {}
+                                viewModel.checkMathAnswer {
+                                }
                             },
                             onSnoozeClick = {
                                 viewModel.snoozeAlarm(this@AlarmDismissActivity) {}

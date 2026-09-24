@@ -33,7 +33,6 @@ data class AlarmDismissUiState(
     val isDismissed: Boolean = false,
     val isSnoozed: Boolean = false,
     val showMorningDashboard: Boolean = false,
-    val weatherInfo: WeatherInfo? = null,
     val isWeatherLoading: Boolean = false,
     val quote: Quote = QuoteProvider.getTodayQuote()
 ) {
@@ -49,6 +48,20 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
 
     private val _uiState = MutableStateFlow(AlarmDismissUiState())
     val uiState: StateFlow<AlarmDismissUiState> = _uiState.asStateFlow()
+
+    private val _weatherInfo = MutableStateFlow<WeatherInfo?>(null)
+    val weatherInfo = _weatherInfo.asStateFlow()
+
+    init {
+        getCurrentWeather()
+    }
+
+    fun getCurrentWeather() {
+        viewModelScope.launch {
+            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(getApplication())
+            _uiState.update { it.copy(isWeatherLoading = false) }
+        }
+    }
 
     fun loadDismissChallenge(alarmId: Int) {
         viewModelScope.launch {
@@ -171,15 +184,6 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                     isDismissed = true,
                     showMorningDashboard = true,
                     isWeatherLoading = true
-                )
-            }
-
-            // Fetch live weather forecast for Morning Dashboard
-            val weather = WeatherRepository.fetchCurrentWeather(getApplication())
-            _uiState.update {
-                it.copy(
-                    weatherInfo = weather,
-                    isWeatherLoading = false
                 )
             }
         }
