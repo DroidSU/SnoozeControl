@@ -74,6 +74,7 @@ import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.Utils
+import com.snoozecontrol.util.WeatherInfo
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +82,7 @@ import kotlin.math.roundToInt
 fun AlarmScreen(
     alarms: List<AlarmItem>,
     nextAlarm: AlarmItem?,
+    weatherInfo: WeatherInfo?,
     onAddClick: () -> Unit,
     onEditClick: (Int) -> Unit,
     onToggleAlarm: (Int) -> Unit,
@@ -153,13 +155,13 @@ fun AlarmScreen(
                 }
             }
 
-            FloatingGreetingBar(greeting, nextAlarm)
+            FloatingGreetingBar(greeting, nextAlarm, weatherInfo)
         }
     }
 }
 
 @Composable
-fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?) {
+fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: WeatherInfo?) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -197,26 +199,28 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?) {
                 }
             }
 
-            Surface(
-                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            if (weatherInfo != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(16.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.WbSunny,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "24°C",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.WbSunny,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${weatherInfo.temperatureCelsius.toString()}\u00B0C",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -446,6 +450,7 @@ fun AlarmScreenPreview() {
         AlarmScreen(
             alarms = sampleAlarms,
             nextAlarm = sampleAlarms.first(),
+            weatherInfo = null,
             onAddClick = {},
             onEditClick = {},
             onToggleAlarm = {},

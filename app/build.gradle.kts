@@ -50,6 +50,7 @@ dependencies {
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.play.services.location)
     ksp(libs.androidx.room.compiler)
 
     // CameraX

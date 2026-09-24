@@ -20,10 +20,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.snoozecontrol.service.AlarmService
 import com.snoozecontrol.ui.AlarmDismissScreen
+import com.snoozecontrol.ui.MorningDashboardScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.viewmodel.AlarmDismissViewModel
-import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
 
 class AlarmDismissActivity : ComponentActivity() {
     private val viewModel: AlarmDismissViewModel by viewModels()
@@ -42,11 +41,9 @@ class AlarmDismissActivity : ComponentActivity() {
 
             LaunchedEffect(uiState.isDismissed) {
                 if (uiState.isDismissed) {
+                    stopAlarmService()
                     if (uiState.isSnoozed) {
-                        dismissServiceAndFinish()
-                    } else {
-                        delay(1200L.milliseconds)
-                        dismissServiceAndFinish()
+                        finish()
                     }
                 }
             }
@@ -56,26 +53,35 @@ class AlarmDismissActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AlarmDismissScreen(
-                        isSuccess = uiState.isDismissed,
-                        challengeType = uiState.challengeType,
-                        equation = uiState.equation,
-                        answerInput = uiState.answerInput,
-                        errorMessage = uiState.errorMessage,
-                        canSnooze = uiState.canSnooze,
-                        snoozeDurationMinutes = uiState.snoozeDurationMinutes,
-                        remainingSnoozes = uiState.remainingSnoozes,
-                        onAnswerChange = viewModel::onAnswerChange,
-                        onBarcodeScanned = { scannedBarcode ->
-                            viewModel.onBarcodeScanned(scannedBarcode) {}
-                        },
-                        onDismissClick = {
-                            viewModel.checkMathAnswer {}
-                        },
-                        onSnoozeClick = {
-                            viewModel.snoozeAlarm(this@AlarmDismissActivity) {}
-                        }
-                    )
+                    if (uiState.showMorningDashboard) {
+                        MorningDashboardScreen(
+                            weatherInfo = uiState.weatherInfo,
+                            isWeatherLoading = uiState.isWeatherLoading,
+                            quote = uiState.quote,
+                            onStartDayClick = { finish() }
+                        )
+                    } else {
+                        AlarmDismissScreen(
+                            isSuccess = uiState.isDismissed,
+                            challengeType = uiState.challengeType,
+                            equation = uiState.equation,
+                            answerInput = uiState.answerInput,
+                            errorMessage = uiState.errorMessage,
+                            canSnooze = uiState.canSnooze,
+                            snoozeDurationMinutes = uiState.snoozeDurationMinutes,
+                            remainingSnoozes = uiState.remainingSnoozes,
+                            onAnswerChange = viewModel::onAnswerChange,
+                            onBarcodeScanned = { scannedBarcode ->
+                                viewModel.onBarcodeScanned(scannedBarcode) {}
+                            },
+                            onDismissClick = {
+                                viewModel.checkMathAnswer {}
+                            },
+                            onSnoozeClick = {
+                                viewModel.snoozeAlarm(this@AlarmDismissActivity) {}
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -99,7 +105,7 @@ class AlarmDismissActivity : ComponentActivity() {
         }
     }
 
-    private fun dismissServiceAndFinish() {
+    private fun stopAlarmService() {
         val serviceIntent = Intent(this, AlarmService::class.java).apply {
             action = AlarmService.ACTION_DISMISS
         }
@@ -108,7 +114,6 @@ class AlarmDismissActivity : ComponentActivity() {
         } else {
             startService(serviceIntent)
         }
-        finish()
     }
 
     private fun setupLockScreenFlags() {

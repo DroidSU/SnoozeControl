@@ -10,6 +10,9 @@ import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.model.DismissState
 import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.util.WeatherInfo
+import com.snoozecontrol.util.WeatherRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +24,15 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 class AlarmViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val _weatherInfo = MutableStateFlow<WeatherInfo?>(null)
+    val weatherInfo = _weatherInfo.asStateFlow()
+
     private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
+
+    init {
+        getCurrentWeather()
+    }
 
     val alarms: StateFlow<List<AlarmItem>> = alarmDao.getAllAlarms()
         .stateIn(
@@ -29,6 +40,12 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    fun getCurrentWeather() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(getApplication())
+        }
+    }
 
     val nextAlarm: StateFlow<AlarmItem?> = alarms.map { alarmList ->
         val activeAlarms = alarmList.filter { it.isEnabled }

@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val alarms by viewModel.alarms.collectAsState()
             val nextAlarm by viewModel.nextAlarm.collectAsState()
+            val weather by viewModel.weatherInfo.collectAsState()
             val navController = rememberNavController()
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
@@ -74,6 +75,7 @@ class MainActivity : ComponentActivity() {
                                 AlarmScreen(
                                     alarms = alarms,
                                     nextAlarm = nextAlarm,
+                                    weatherInfo = weather,
                                     onAddClick = {
                                         context.startActivity(
                                             AddAlarmActivity.createIntent(context, null)
@@ -141,6 +143,12 @@ class MainActivity : ComponentActivity() {
         }
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
+        }
+        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION), 103)
+        }
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 104)
         }
     }
 

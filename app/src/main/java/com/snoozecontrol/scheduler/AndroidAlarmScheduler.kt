@@ -11,6 +11,7 @@ import android.widget.Toast
 import com.snoozecontrol.MainActivity
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.receiver.AlarmReceiver
+import com.snoozecontrol.receiver.BedtimeReceiver
 import java.util.Calendar
 
 class AndroidAlarmScheduler(
@@ -61,12 +62,61 @@ class AndroidAlarmScheduler(
                 pendingIntent
             )
             Log.d("AlarmScheduler", "Scheduled alarm ${item.id} for ${calendar.time}")
+
+            if (item.isBedtimeReminderEnabled) {
+                scheduleBedtimeReminder(item, calendar)
+            } else {
+                cancelBedtimeReminder(item)
+            }
         } catch (e: SecurityException) {
             Log.e("AlarmScheduler", "Failed to schedule exact alarm: ${e.message}")
             requestExactAlarmPermission()
         } catch (e: Exception) {
             Log.e("AlarmScheduler", "Error scheduling alarm: ${e.message}")
         }
+    }
+
+    private fun scheduleBedtimeReminder(item: AlarmItem, alarmCal: Calendar) {
+        val bedtimeCal = (alarmCal.clone() as Calendar).apply {
+            add(Calendar.HOUR_OF_DAY, -8)
+        }
+
+        if (bedtimeCal.after(Calendar.getInstance())) {
+            val intent = Intent(context, BedtimeReceiver::class.java).apply {
+                putExtra("ALARM_TIME_DISPLAY", item.displayTime)
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                item.id + BEDTIME_ID_OFFSET,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            try {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    bedtimeCal.timeInMillis,
+                    pendingIntent
+                )
+                Log.d(
+                    "AlarmScheduler",
+                    "Scheduled bedtime reminder for alarm ${item.id} at ${bedtimeCal.time}"
+                )
+            } catch (e: Exception) {
+                Log.e("AlarmScheduler", "Failed to schedule bedtime reminder: ${e.message}")
+            }
+        }
+    }
+
+    private fun cancelBedtimeReminder(item: AlarmItem) {
+        val intent = Intent(context, BedtimeReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            item.id + BEDTIME_ID_OFFSET,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
     }
 
     private fun requestExactAlarmPermission() {
@@ -92,7 +142,12 @@ class AndroidAlarmScheduler(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
+        cancelBedtimeReminder(item)
         Log.d("AlarmScheduler", "Canceled alarm ${item.id}")
+    }
+
+    companion object {
+        private const val BEDTIME_ID_OFFSET = 100000
     }
 
     private fun calculateNextAlarmCalendar(item: AlarmItem): Calendar {

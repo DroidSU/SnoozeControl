@@ -90,6 +90,7 @@ class AddAlarmActivity : ComponentActivity() {
                                 onChallengeTypeChange = viewModel::onChallengeTypeChange,
                                 onDaysChange = viewModel::onDaysChange,
                                 onSnoozeDurationChange = viewModel::onSnoozeDurationChange,
+                                onBedtimeReminderToggle = viewModel::onBedtimeReminderToggle,
                                 onSave = {
                                     viewModel.saveAlarm(this@AddAlarmActivity) {
                                         setResult(RESULT_OK)

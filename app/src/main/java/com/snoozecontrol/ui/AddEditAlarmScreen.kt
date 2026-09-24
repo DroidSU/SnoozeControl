@@ -42,6 +42,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -81,6 +83,7 @@ fun AddEditAlarmScreen(
     onChallengeTypeChange: (ChallengeType) -> Unit,
     onDaysChange: (Set<Int>) -> Unit,
     onSnoozeDurationChange: (Int) -> Unit = {},
+    onBedtimeReminderToggle: (Boolean) -> Unit = {},
     onSave: () -> Unit,
     onBack: () -> Unit,
     onRegisterBarcodeClick: () -> Unit
@@ -243,6 +246,14 @@ fun AddEditAlarmScreen(
             SnoozeSettingsCard(
                 snoozeDurationMinutes = uiState.snoozeDurationMinutes,
                 onSnoozeDurationChange = onSnoozeDurationChange
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // BEDTIME REMINDER SECTION
+            BedtimeReminderCard(
+                isEnabled = uiState.isBedtimeReminderEnabled,
+                onToggle = onBedtimeReminderToggle
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -770,6 +781,54 @@ fun SnoozeSettingsCard(
                     )
                 }
             }
+        }
+    }
+}
+
+// BEDTIME REMINDER CARD COMPONENT
+@Composable
+fun BedtimeReminderCard(
+    isEnabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Bedtime Reminder 🌙",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Remind me 8 hours before alarm time to wind down for sleep.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
+                )
+            )
         }
     }
 }

@@ -8,6 +8,10 @@ import com.snoozecontrol.R
 import com.snoozecontrol.data.AlarmDatabase
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.util.Quote
+import com.snoozecontrol.util.QuoteProvider
+import com.snoozecontrol.util.WeatherInfo
+import com.snoozecontrol.util.WeatherRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +31,11 @@ data class AlarmDismissUiState(
     val maxSnoozeCount: Int = 3,
     val snoozeCount: Int = 0,
     val isDismissed: Boolean = false,
-    val isSnoozed: Boolean = false
+    val isSnoozed: Boolean = false,
+    val showMorningDashboard: Boolean = false,
+    val weatherInfo: WeatherInfo? = null,
+    val isWeatherLoading: Boolean = false,
+    val quote: Quote = QuoteProvider.getTodayQuote()
 ) {
     val canSnooze: Boolean
         get() = snoozeCount < maxSnoozeCount && maxSnoozeCount > 0
@@ -158,7 +166,22 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                     alarmDao.updateAlarm(alarm.copy(snoozeCount = 0))
                 }
             }
-            _uiState.update { it.copy(isDismissed = true) }
+            _uiState.update {
+                it.copy(
+                    isDismissed = true,
+                    showMorningDashboard = true,
+                    isWeatherLoading = true
+                )
+            }
+
+            // Fetch live weather forecast for Morning Dashboard
+            val weather = WeatherRepository.fetchCurrentWeather(getApplication())
+            _uiState.update {
+                it.copy(
+                    weatherInfo = weather,
+                    isWeatherLoading = false
+                )
+            }
         }
     }
 

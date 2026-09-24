@@ -24,6 +24,7 @@ data class AddEditAlarmUiState(
     val targetBarcode: String? = null,
     val selectedDays: Set<Int> = emptySet(),
     val snoozeDurationMinutes: Int = 5,
+    val isBedtimeReminderEnabled: Boolean = true,
     val isLoaded: Boolean = false
 ) {
     val final24Hour: Int
@@ -74,6 +75,7 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 targetBarcode = barcodeResult ?: alarm.targetBarcode,
                 selectedDays = days,
                 snoozeDurationMinutes = alarm.snoozeDurationMinutes,
+                isBedtimeReminderEnabled = alarm.isBedtimeReminderEnabled,
                 isLoaded = true
             )
         } else {
@@ -97,6 +99,7 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 targetBarcode = barcodeResult,
                 selectedDays = emptySet(),
                 snoozeDurationMinutes = 5,
+                isBedtimeReminderEnabled = true,
                 isLoaded = true
             )
         }
@@ -132,6 +135,10 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update { it.copy(snoozeDurationMinutes = minutes) }
     }
 
+    fun onBedtimeReminderToggle(enabled: Boolean) {
+        _uiState.update { it.copy(isBedtimeReminderEnabled = enabled) }
+    }
+
     fun saveAlarm(context: Context, onSaved: () -> Unit) {
         val state = _uiState.value
         viewModelScope.launch {
@@ -144,7 +151,8 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 targetBarcode = state.targetBarcode,
                 repeatDays = state.repeatDaysString,
                 snoozeDurationMinutes = state.snoozeDurationMinutes,
-                maxSnoozeCount = 3
+                maxSnoozeCount = 3,
+                isBedtimeReminderEnabled = state.isBedtimeReminderEnabled
             )
 
             if (state.alarmId == -1) {

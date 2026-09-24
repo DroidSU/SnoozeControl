@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class AlarmService : Service() {
     private var mediaPlayer: MediaPlayer? = null
@@ -92,7 +93,7 @@ class AlarmService : Service() {
         val player = MediaPlayer().apply {
             setDataSource(this@AlarmService, alarmUri)
             isLooping = true
-            setVolume(0.05f, 0.05f) // Start soft for crescendo
+            setVolume(0.2f, 0.2f) // Start soft for crescendo
             prepare()
             start()
         }
@@ -100,14 +101,14 @@ class AlarmService : Service() {
 
         // Ramp volume up from 0.05 to 1.0 over 20 seconds (40 steps of 500ms)
         serviceScope.launch {
-            val totalSteps = 40
-            val initialVol = 0.05f
+            val totalSteps = 5
+            val initialVol = 0.2f
             val targetVol = 1.0f
             val volStep = (targetVol - initialVol) / totalSteps
             var currentVol = initialVol
 
             repeat(totalSteps) {
-                delay(500L)
+                delay(500L.milliseconds)
                 if (mediaPlayer == null || mediaPlayer?.isPlaying != true) return@launch
                 currentVol += volStep
                 val clampedVol = currentVol.coerceAtMost(1.0f)

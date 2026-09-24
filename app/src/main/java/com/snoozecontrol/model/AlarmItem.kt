@@ -16,7 +16,8 @@ data class AlarmItem(
     val repeatDays: String = "", // Comma-separated day numbers (1=Mon, 2=Tue, ..., 7=Sun) or empty for once
     val snoozeDurationMinutes: Int = 5,
     val maxSnoozeCount: Int = 3,
-    val snoozeCount: Int = 0
+    val snoozeCount: Int = 0,
+    val isBedtimeReminderEnabled: Boolean = true
 ) {
     val displayTime: String
         get() = String.format(Locale.getDefault(), "%02d:%02d", hour, minute)
