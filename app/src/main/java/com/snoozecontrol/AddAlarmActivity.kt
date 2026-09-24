@@ -37,6 +37,7 @@ class AddAlarmActivity : ComponentActivity() {
         val alarmChallengeStr = intent.getStringExtra(EXTRA_ALARM_CHALLENGE)
         val alarmBarcode = intent.getStringExtra(EXTRA_ALARM_BARCODE)
         val alarmRepeatDays = intent.getStringExtra(EXTRA_ALARM_REPEAT_DAYS) ?: ""
+        val alarmSnoozeDuration = intent.getIntExtra(EXTRA_ALARM_SNOOZE_DURATION, 5)
 
         val initialAlarm = if (alarmId != -1 && alarmHour != -1) {
             AlarmItem(
@@ -50,7 +51,8 @@ class AddAlarmActivity : ComponentActivity() {
                     ChallengeType.MATH
                 },
                 targetBarcode = alarmBarcode,
-                repeatDays = alarmRepeatDays
+                repeatDays = alarmRepeatDays,
+                snoozeDurationMinutes = alarmSnoozeDuration
             )
         } else null
 
@@ -87,6 +89,7 @@ class AddAlarmActivity : ComponentActivity() {
                                 onAmPmChange = viewModel::onAmPmChange,
                                 onChallengeTypeChange = viewModel::onChallengeTypeChange,
                                 onDaysChange = viewModel::onDaysChange,
+                                onSnoozeDurationChange = viewModel::onSnoozeDurationChange,
                                 onSave = {
                                     viewModel.saveAlarm(this@AddAlarmActivity) {
                                         setResult(RESULT_OK)
@@ -127,6 +130,7 @@ class AddAlarmActivity : ComponentActivity() {
         const val EXTRA_ALARM_CHALLENGE = "extra_alarm_challenge"
         const val EXTRA_ALARM_BARCODE = "extra_alarm_barcode"
         const val EXTRA_ALARM_REPEAT_DAYS = "extra_alarm_repeat_days"
+        const val EXTRA_ALARM_SNOOZE_DURATION = "extra_alarm_snooze_duration"
 
         fun createIntent(
             context: Context,
@@ -140,6 +144,7 @@ class AddAlarmActivity : ComponentActivity() {
                     putExtra(EXTRA_ALARM_CHALLENGE, alarm.challengeType.name)
                     putExtra(EXTRA_ALARM_BARCODE, alarm.targetBarcode)
                     putExtra(EXTRA_ALARM_REPEAT_DAYS, alarm.repeatDays)
+                    putExtra(EXTRA_ALARM_SNOOZE_DURATION, alarm.snoozeDurationMinutes)
                 } else {
                     putExtra(EXTRA_ALARM_ID, -1)
                 }

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,8 +42,12 @@ class AlarmDismissActivity : ComponentActivity() {
 
             LaunchedEffect(uiState.isDismissed) {
                 if (uiState.isDismissed) {
-                    delay(1200L.milliseconds)
-                    dismissServiceAndFinish()
+                    if (uiState.isSnoozed) {
+                        dismissServiceAndFinish()
+                    } else {
+                        delay(1200L.milliseconds)
+                        dismissServiceAndFinish()
+                    }
                 }
             }
 
@@ -57,16 +62,40 @@ class AlarmDismissActivity : ComponentActivity() {
                         equation = uiState.equation,
                         answerInput = uiState.answerInput,
                         errorMessage = uiState.errorMessage,
+                        canSnooze = uiState.canSnooze,
+                        snoozeDurationMinutes = uiState.snoozeDurationMinutes,
+                        remainingSnoozes = uiState.remainingSnoozes,
                         onAnswerChange = viewModel::onAnswerChange,
                         onBarcodeScanned = { scannedBarcode ->
                             viewModel.onBarcodeScanned(scannedBarcode) {}
                         },
                         onDismissClick = {
                             viewModel.checkMathAnswer {}
+                        },
+                        onSnoozeClick = {
+                            viewModel.snoozeAlarm(this@AlarmDismissActivity) {}
                         }
                     )
                 }
             }
+        }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN,
+            KeyEvent.KEYCODE_VOLUME_UP,
+            KeyEvent.KEYCODE_VOLUME_MUTE -> true // Block physical volume key muting
+            else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN,
+            KeyEvent.KEYCODE_VOLUME_UP,
+            KeyEvent.KEYCODE_VOLUME_MUTE -> true // Block physical volume key muting
+            else -> super.onKeyUp(keyCode, event)
         }
     }
 

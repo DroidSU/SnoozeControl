@@ -23,6 +23,7 @@ data class AddEditAlarmUiState(
     val challengeType: ChallengeType = ChallengeType.MATH,
     val targetBarcode: String? = null,
     val selectedDays: Set<Int> = emptySet(),
+    val snoozeDurationMinutes: Int = 5,
     val isLoaded: Boolean = false
 ) {
     val final24Hour: Int
@@ -72,6 +73,7 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 challengeType = alarm.challengeType,
                 targetBarcode = barcodeResult ?: alarm.targetBarcode,
                 selectedDays = days,
+                snoozeDurationMinutes = alarm.snoozeDurationMinutes,
                 isLoaded = true
             )
         } else {
@@ -94,6 +96,7 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 challengeType = ChallengeType.MATH,
                 targetBarcode = barcodeResult,
                 selectedDays = emptySet(),
+                snoozeDurationMinutes = 5,
                 isLoaded = true
             )
         }
@@ -125,6 +128,10 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
         _uiState.update { it.copy(selectedDays = days) }
     }
 
+    fun onSnoozeDurationChange(minutes: Int) {
+        _uiState.update { it.copy(snoozeDurationMinutes = minutes) }
+    }
+
     fun saveAlarm(context: Context, onSaved: () -> Unit) {
         val state = _uiState.value
         viewModelScope.launch {
@@ -135,7 +142,9 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 isEnabled = true,
                 challengeType = state.challengeType,
                 targetBarcode = state.targetBarcode,
-                repeatDays = state.repeatDaysString
+                repeatDays = state.repeatDaysString,
+                snoozeDurationMinutes = state.snoozeDurationMinutes,
+                maxSnoozeCount = 3
             )
 
             if (state.alarmId == -1) {

@@ -1,16 +1,19 @@
 package com.snoozecontrol.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snoozecontrol.R
 import com.snoozecontrol.data.AlarmDatabase
 import com.snoozecontrol.model.ChallengeType
+import com.snoozecontrol.scheduler.AndroidAlarmScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class AlarmDismissUiState(
     val alarmId: Int = -1,
@@ -20,8 +23,18 @@ data class AlarmDismissUiState(
     val answerInput: String = "",
     val targetBarcode: String? = null,
     val errorMessage: String? = null,
-    val isDismissed: Boolean = false
-)
+    val snoozeDurationMinutes: Int = 5,
+    val maxSnoozeCount: Int = 3,
+    val snoozeCount: Int = 0,
+    val isDismissed: Boolean = false,
+    val isSnoozed: Boolean = false
+) {
+    val canSnooze: Boolean
+        get() = snoozeCount < maxSnoozeCount && maxSnoozeCount > 0
+
+    val remainingSnoozes: Int
+        get() = (maxSnoozeCount - snoozeCount).coerceAtLeast(0)
+}
 
 class AlarmDismissViewModel(application: Application) : AndroidViewModel(application) {
     private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
@@ -33,30 +46,45 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             val alarm = if (alarmId != -1) alarmDao.getAlarmById(alarmId) else null
             if (alarm != null) {
+                val snoozeDur = alarm.snoozeDurationMinutes
+                val maxSnooze = alarm.maxSnoozeCount
+                val currentSnooze = alarm.snoozeCount
+
                 when (alarm.challengeType) {
-                    ChallengeType.MATH -> generateMathProblem(alarmId)
+                    ChallengeType.MATH -> generateMathProblem(alarmId, snoozeDur, maxSnooze, currentSnooze)
                     ChallengeType.BARCODE -> {
                         _uiState.value = AlarmDismissUiState(
                             alarmId = alarmId,
                             challengeType = ChallengeType.BARCODE,
-                            targetBarcode = alarm.targetBarcode
+                            targetBarcode = alarm.targetBarcode,
+                            snoozeDurationMinutes = snoozeDur,
+                            maxSnoozeCount = maxSnooze,
+                            snoozeCount = currentSnooze
                         )
                     }
 
                     ChallengeType.NONE -> {
                         _uiState.value = AlarmDismissUiState(
                             alarmId = alarmId,
-                            challengeType = ChallengeType.NONE
+                            challengeType = ChallengeType.NONE,
+                            snoozeDurationMinutes = snoozeDur,
+                            maxSnoozeCount = maxSnooze,
+                            snoozeCount = currentSnooze
                         )
                     }
                 }
             } else {
-                generateMathProblem(alarmId)
+                generateMathProblem(alarmId, 5, 3, 0)
             }
         }
     }
 
-    private fun generateMathProblem(alarmId: Int) {
+    private fun generateMathProblem(
+        alarmId: Int,
+        snoozeDur: Int,
+        maxSnooze: Int,
+        currentSnooze: Int
+    ) {
         val num1 = (1..20).random()
         val num2 = (1..20).random()
         val operator = listOf("+", "-", "*").random()
@@ -72,7 +100,10 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
             alarmId = alarmId,
             challengeType = ChallengeType.MATH,
             equation = equation,
-            correctAnswer = answer
+            correctAnswer = answer,
+            snoozeDurationMinutes = snoozeDur,
+            maxSnoozeCount = maxSnooze,
+            snoozeCount = currentSnooze
         )
     }
 
@@ -85,7 +116,7 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
         val userTypedAnswer = currentState.answerInput.trim().toIntOrNull()
 
         if (userTypedAnswer == currentState.correctAnswer) {
-            _uiState.update { it.copy(isDismissed = true) }
+            resetSnoozeCountAndDismiss(currentState.alarmId)
             onSuccess()
         } else {
             _uiState.update {
@@ -104,7 +135,7 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
             val targetClean = currentState.targetBarcode?.trim().orEmpty()
 
             if (scannedClean.isNotEmpty() && scannedClean == targetClean) {
-                _uiState.update { it.copy(isDismissed = true) }
+                resetSnoozeCountAndDismiss(currentState.alarmId)
                 onSuccess()
             } else {
                 _uiState.update {
@@ -115,6 +146,47 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                         )
                     )
                 }
+            }
+        }
+    }
+
+    private fun resetSnoozeCountAndDismiss(alarmId: Int) {
+        viewModelScope.launch {
+            if (alarmId != -1) {
+                val alarm = alarmDao.getAlarmById(alarmId)
+                if (alarm != null) {
+                    alarmDao.updateAlarm(alarm.copy(snoozeCount = 0))
+                }
+            }
+            _uiState.update { it.copy(isDismissed = true) }
+        }
+    }
+
+    fun snoozeAlarm(context: Context, onSuccess: () -> Unit) {
+        val currentState = _uiState.value
+        if (!currentState.canSnooze || currentState.alarmId == -1) return
+
+        viewModelScope.launch {
+            val alarm = alarmDao.getAlarmById(currentState.alarmId)
+            if (alarm != null) {
+                val updatedSnoozeCount = alarm.snoozeCount + 1
+                
+                // Calculate snooze trigger time (now + snoozeDurationMinutes)
+                val cal = Calendar.getInstance().apply {
+                    add(Calendar.MINUTE, alarm.snoozeDurationMinutes)
+                }
+                
+                val snoozedAlarm = alarm.copy(
+                    hour = cal.get(Calendar.HOUR_OF_DAY),
+                    minute = cal.get(Calendar.MINUTE),
+                    snoozeCount = updatedSnoozeCount
+                )
+
+                alarmDao.updateAlarm(snoozedAlarm)
+                AndroidAlarmScheduler(context).schedule(snoozedAlarm)
+
+                _uiState.update { it.copy(isSnoozed = true, isDismissed = true) }
+                onSuccess()
             }
         }
     }

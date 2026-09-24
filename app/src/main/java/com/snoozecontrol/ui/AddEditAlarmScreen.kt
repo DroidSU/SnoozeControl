@@ -80,6 +80,7 @@ fun AddEditAlarmScreen(
     onAmPmChange: (Boolean) -> Unit,
     onChallengeTypeChange: (ChallengeType) -> Unit,
     onDaysChange: (Set<Int>) -> Unit,
+    onSnoozeDurationChange: (Int) -> Unit = {},
     onSave: () -> Unit,
     onBack: () -> Unit,
     onRegisterBarcodeClick: () -> Unit
@@ -235,6 +236,14 @@ fun AddEditAlarmScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SNOOZE SETTINGS SECTION
+            SnoozeSettingsCard(
+                snoozeDurationMinutes = uiState.snoozeDurationMinutes,
+                onSnoozeDurationChange = onSnoozeDurationChange
+            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -694,6 +703,77 @@ fun RepeatScheduleCard(
     }
 }
 
+// SNOOZE SETTINGS CARD COMPONENT
+@Composable
+fun SnoozeSettingsCard(
+    snoozeDurationMinutes: Int,
+    onSnoozeDurationChange: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Snooze Settings",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Max 3 snoozes",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+            Text(
+                text = "Select snooze duration",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            val durations = listOf(5, 10, 15)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                durations.forEach { duration ->
+                    val isSelected = snoozeDurationMinutes == duration
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onSnoozeDurationChange(duration) },
+                        label = {
+                            Text(
+                                "$duration min",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun AddEditAlarmScreenPreview() {
@@ -711,6 +791,7 @@ fun AddEditAlarmScreenPreview() {
             onAmPmChange = {},
             onChallengeTypeChange = {},
             onDaysChange = {},
+            onSnoozeDurationChange = {},
             onSave = {},
             onBack = {},
             onRegisterBarcodeClick = {}

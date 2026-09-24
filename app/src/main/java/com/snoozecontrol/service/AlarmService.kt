@@ -14,10 +14,18 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.snoozecontrol.AlarmDismissActivity
 import com.snoozecontrol.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class AlarmService : Service() {
     private var mediaPlayer: MediaPlayer? = null
     private var wakeLock: PowerManager.WakeLock? = null
+
+    private val serviceJob = Job()
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
     override fun onCreate() {
         super.onCreate()
@@ -81,11 +89,34 @@ class AlarmService : Service() {
         val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
 
-        mediaPlayer = MediaPlayer().apply {
+        val player = MediaPlayer().apply {
             setDataSource(this@AlarmService, alarmUri)
             isLooping = true
+            setVolume(0.05f, 0.05f) // Start soft for crescendo
             prepare()
             start()
+        }
+        mediaPlayer = player
+
+        // Ramp volume up from 0.05 to 1.0 over 20 seconds (40 steps of 500ms)
+        serviceScope.launch {
+            val totalSteps = 40
+            val initialVol = 0.05f
+            val targetVol = 1.0f
+            val volStep = (targetVol - initialVol) / totalSteps
+            var currentVol = initialVol
+
+            repeat(totalSteps) {
+                delay(500L)
+                if (mediaPlayer == null || mediaPlayer?.isPlaying != true) return@launch
+                currentVol += volStep
+                val clampedVol = currentVol.coerceAtMost(1.0f)
+                try {
+                    mediaPlayer?.setVolume(clampedVol, clampedVol)
+                } catch (_: Exception) {
+                    return@launch
+                }
+            }
         }
     }
 
@@ -106,8 +137,11 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
+        serviceJob.cancel()
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+        } catch (_: Exception) {}
         mediaPlayer = null
 
         wakeLock?.let {
