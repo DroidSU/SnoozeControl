@@ -66,7 +66,10 @@ import com.snoozecontrol.R
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.viewmodel.AddEditAlarmUiState
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.filterNotNull
 import java.util.Locale
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -438,8 +441,8 @@ fun WheelColumn(
 ) {
     val items = remember(range) { range.toList() }
     val count = items.size
-    val infiniteCount = count * 10
-    val initialIndex = remember(selectedValue) {
+    val infiniteCount = count * 20
+    val initialIndex = remember(items) {
         val base = (infiniteCount / 2) - ((infiniteCount / 2) % count)
         val itemOffset = items.indexOf(selectedValue).coerceAtLeast(0)
         (base + itemOffset - 1).coerceAtLeast(0)
@@ -449,16 +452,37 @@ fun WheelColumn(
     val snapBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { firstVisible ->
-                if (listState.isScrollInProgress) {
-                    val centerIndex = firstVisible + 1
-                    val actualValue = items[centerIndex % count]
-                    if (actualValue != selectedValue) {
-                        onValueChange(actualValue)
-                    }
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) null
+            else {
+                val viewportCenter =
+                    (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+                visibleItems.minByOrNull { abs((it.offset + it.size / 2) - viewportCenter) }
+            }
+        }
+            .filterNotNull()
+            .distinctUntilChangedBy { it.index }
+            .collect { centerItem ->
+                val actualValue = items[centerItem.index % count]
+                if (actualValue != selectedValue) {
+                    onValueChange(actualValue)
                 }
             }
+    }
+
+    LaunchedEffect(selectedValue) {
+        if (!listState.isScrollInProgress) {
+            val currentCenterIndex = listState.firstVisibleItemIndex + 1
+            val currentCenterValue = items[currentCenterIndex % count]
+            if (currentCenterValue != selectedValue) {
+                val base = (listState.firstVisibleItemIndex / count) * count
+                val targetOffset = items.indexOf(selectedValue).coerceAtLeast(0)
+                val targetIndex = (base + targetOffset - 1).coerceAtLeast(0)
+                listState.scrollToItem(targetIndex)
+            }
+        }
     }
 
     Box(

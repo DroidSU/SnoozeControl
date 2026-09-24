@@ -13,6 +13,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -20,6 +21,8 @@ import com.snoozecontrol.service.AlarmService
 import com.snoozecontrol.ui.AlarmDismissScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.viewmodel.AlarmDismissViewModel
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 class AlarmDismissActivity : ComponentActivity() {
     private val viewModel: AlarmDismissViewModel by viewModels()
@@ -36,26 +39,30 @@ class AlarmDismissActivity : ComponentActivity() {
         setContent {
             val uiState by viewModel.uiState.collectAsState()
 
+            LaunchedEffect(uiState.isDismissed) {
+                if (uiState.isDismissed) {
+                    delay(1200L.milliseconds)
+                    dismissServiceAndFinish()
+                }
+            }
+
             SnoozeControlTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     AlarmDismissScreen(
+                        isSuccess = uiState.isDismissed,
                         challengeType = uiState.challengeType,
                         equation = uiState.equation,
                         answerInput = uiState.answerInput,
                         errorMessage = uiState.errorMessage,
                         onAnswerChange = viewModel::onAnswerChange,
                         onBarcodeScanned = { scannedBarcode ->
-                            viewModel.onBarcodeScanned(scannedBarcode) {
-                                dismissServiceAndFinish()
-                            }
+                            viewModel.onBarcodeScanned(scannedBarcode) {}
                         },
                         onDismissClick = {
-                            viewModel.checkMathAnswer {
-                                dismissServiceAndFinish()
-                            }
+                            viewModel.checkMathAnswer {}
                         }
                     )
                 }

@@ -208,7 +208,7 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?) {
                     Icon(
                         imageVector = Icons.Default.WbSunny,
                         contentDescription = null,
-                        tint = Color(0xFFFFD166),
+                        tint = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
