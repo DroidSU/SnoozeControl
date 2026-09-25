@@ -8,6 +8,7 @@ import com.snoozecontrol.data.AlarmDatabase
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.util.Utils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,12 +29,7 @@ data class AddEditAlarmUiState(
     val isLoaded: Boolean = false
 ) {
     val final24Hour: Int
-        get() = when {
-            isAm && hour12 == 12 -> 0
-            isAm -> hour12
-            !isAm && hour12 == 12 -> 12
-            else -> hour12 + 12
-        }
+        get() = Utils.toHour24(hour12, isAm)
 
     val repeatDaysString: String
         get() = selectedDays.sorted().joinToString(",")
@@ -57,12 +53,8 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
         }
 
         if (alarm != null) {
-            val isAm = alarm.hour < 12
-            val hour12 = when {
-                alarm.hour == 0 -> 12
-                alarm.hour > 12 -> alarm.hour - 12
-                else -> alarm.hour
-            }
+            val isAm = Utils.isAm(alarm.hour)
+            val hour12 = Utils.toHour12(alarm.hour)
             val days = if (alarm.repeatDays.isBlank()) emptySet()
             else alarm.repeatDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
 
@@ -83,12 +75,8 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
             val cal = Calendar.getInstance().apply { add(Calendar.MINUTE, 1) }
             val h24 = cal.get(Calendar.HOUR_OF_DAY)
             val min = cal.get(Calendar.MINUTE)
-            val isAm = h24 < 12
-            val h12 = when {
-                h24 == 0 -> 12
-                h24 > 12 -> h24 - 12
-                else -> h24
-            }
+            val isAm = Utils.isAm(h24)
+            val h12 = Utils.toHour12(h24)
 
             _uiState.value = AddEditAlarmUiState(
                 alarmId = -1,

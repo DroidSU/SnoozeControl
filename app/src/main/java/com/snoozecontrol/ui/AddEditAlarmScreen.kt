@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.snoozecontrol.R
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.util.Utils
 import com.snoozecontrol.viewmodel.AddEditAlarmUiState
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
@@ -303,7 +304,7 @@ fun TimePickerCard(
 
             // Main Time Display
             val formattedTime = remember(hour12, minute) {
-                String.format(Locale.getDefault(), "%02d:%02d", hour12, minute)
+                Utils.formatTimeDigits(hour12, minute)
             }
             val amPmText = if (isAm) "AM" else "PM"
             Row(

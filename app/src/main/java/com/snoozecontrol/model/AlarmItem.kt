@@ -2,7 +2,7 @@ package com.snoozecontrol.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Locale
+import com.snoozecontrol.util.Utils
 
 @Entity(tableName = "alarms")
 data class AlarmItem(
@@ -19,8 +19,14 @@ data class AlarmItem(
     val snoozeCount: Int = 0,
     val isBedtimeReminderEnabled: Boolean = true
 ) {
+    val hour12: Int
+        get() = Utils.toHour12(hour)
+
+    val amPm: String
+        get() = Utils.getAmPm(hour)
+
     val displayTime: String
-        get() = String.format(Locale.getDefault(), "%02d:%02d", hour, minute)
+        get() = Utils.format12HourWithAmPm(hour, minute)
 
     val selectedDays: Set<Int>
         get() = if (repeatDays.isBlank()) emptySet() else repeatDays.split(",")

@@ -13,12 +13,40 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.snoozecontrol.MainActivity
 import com.snoozecontrol.R
+import com.snoozecontrol.data.AlarmDatabase
 import com.snoozecontrol.model.AlarmItem
+import java.util.Calendar
 
 object UpcomingAlarmNotificationManager {
 
     private const val CHANNEL_ID = "UPCOMING_ALARM_CHANNEL"
     private const val NOTIFICATION_ID = 699
+
+    suspend fun refreshUpcomingNotification(context: Context) {
+        try {
+            val db = AlarmDatabase.getDatabase(context)
+            val activeAlarms = db.alarmDao().getEnabledAlarms()
+
+            if (activeAlarms.isEmpty()) {
+                updateUpcomingAlarmNotification(context, null)
+                return
+            }
+
+            val now = Calendar.getInstance()
+            val currentHour = now.get(Calendar.HOUR_OF_DAY)
+            val currentMinute = now.get(Calendar.MINUTE)
+
+            val nextAlarm = activeAlarms.sortedWith(compareBy({
+                var diff = (it.hour * 60 + it.minute) - (currentHour * 60 + currentMinute)
+                if (diff <= 0) diff += 24 * 60
+                diff
+            })).firstOrNull()
+
+            updateUpcomingAlarmNotification(context, nextAlarm)
+        } catch (e: Throwable) {
+            Log.e("UpcomingAlarmManager", "Safely caught error while refreshing notification", e)
+        }
+    }
 
     fun updateUpcomingAlarmNotification(context: Context, nextAlarm: AlarmItem?) {
         try {
@@ -60,7 +88,7 @@ object UpcomingAlarmNotificationManager {
             val text = "Alarm set for ${nextAlarm.displayTime}"
 
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_snooze_control)
                 .setContentTitle("Upcoming Alarm ⏰")
                 .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_LOW)

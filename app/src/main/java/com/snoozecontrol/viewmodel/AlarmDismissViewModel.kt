@@ -10,6 +10,7 @@ import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.scheduler.AndroidAlarmScheduler
 import com.snoozecontrol.util.Quote
 import com.snoozecontrol.util.QuoteProvider
+import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import com.snoozecontrol.util.WeatherInfo
 import com.snoozecontrol.util.WeatherRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -187,6 +188,8 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                     }
                 }
             }
+            UpcomingAlarmNotificationManager.refreshUpcomingNotification(getApplication())
+
             _uiState.update {
                 it.copy(
                     isDismissed = true,
@@ -219,6 +222,7 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
 
                 alarmDao.updateAlarm(snoozedAlarm)
                 AndroidAlarmScheduler(context).schedule(snoozedAlarm)
+                UpcomingAlarmNotificationManager.refreshUpcomingNotification(getApplication())
 
                 _uiState.update { it.copy(isSnoozed = true, isDismissed = true) }
                 onSuccess()

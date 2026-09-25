@@ -400,18 +400,36 @@ fun AlarmItemRow(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = alarm.displayTime,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 52.sp,
-                        letterSpacing = (-1).sp
-                    ),
-                    color = if (alarm.isEnabled)
-                        MaterialTheme.colorScheme.onSurface
-                    else
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                )
+                Row(
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    val formattedTime12 = remember(alarm.hour12, alarm.minute) {
+                        Utils.formatTimeDigits(alarm.hour12, alarm.minute)
+                    }
+                    Text(
+                        text = formattedTime12,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            fontSize = 52.sp,
+                            letterSpacing = (-1).sp
+                        ),
+                        color = if (alarm.isEnabled)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = alarm.amPm,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (alarm.isEnabled)
+                            MaterialTheme.colorScheme.secondary
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
 
                 Text(
                     text = alarm.getRepeatSummary(),

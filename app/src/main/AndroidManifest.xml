@@ -58,7 +58,8 @@
         <service
             android:name=".service.AlarmService"
             android:foregroundServiceType="mediaPlayback"
-            android:exported="false" />
+            android:exported="false"
+            android:stopWithTask="false" />
 
         <receiver
             android:name=".receiver.AlarmReceiver"
