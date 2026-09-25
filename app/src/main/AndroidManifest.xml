@@ -59,22 +59,29 @@
             android:name=".service.AlarmService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false"
+            android:directBootAware="true"
             android:stopWithTask="false" />
 
         <receiver
             android:name=".receiver.AlarmReceiver"
-            android:exported="false" />
+            android:exported="false"
+            android:directBootAware="true" />
 
         <receiver
             android:name=".receiver.BedtimeReceiver"
-            android:exported="false" />
+            android:exported="false"
+            android:directBootAware="true" />
 
         <receiver
             android:name=".receiver.BootReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:directBootAware="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
 

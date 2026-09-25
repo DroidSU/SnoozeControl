@@ -14,6 +14,9 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.snoozecontrol.AlarmDismissActivity
 import com.snoozecontrol.R
+import com.snoozecontrol.data.AlarmDatabase
+import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -133,6 +136,26 @@ class AlarmService : Service() {
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        val context = applicationContext
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val db = AlarmDatabase.getDatabase(context)
+                val enabledAlarms = db.alarmDao().getEnabledAlarms()
+                val scheduler = AndroidAlarmScheduler(context)
+
+                enabledAlarms.forEach { alarm ->
+                    scheduler.schedule(alarm)
+                }
+
+                UpcomingAlarmNotificationManager.refreshUpcomingNotification(context)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
