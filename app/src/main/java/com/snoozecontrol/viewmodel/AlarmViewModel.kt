@@ -57,9 +57,12 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         initialValue = null
     )
 
-    fun getCurrentWeather() {
+    fun getCurrentWeather(forceRefresh: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
-            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(getApplication())
+            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(
+                getApplication(),
+                forceRefresh = forceRefresh
+            )
         }
     }
 

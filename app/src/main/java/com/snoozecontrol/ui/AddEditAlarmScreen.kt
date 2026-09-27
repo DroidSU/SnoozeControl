@@ -124,9 +124,9 @@ fun AddEditAlarmScreen(
                     onClick = onSave,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(18.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
@@ -135,7 +135,7 @@ fun AddEditAlarmScreen(
                 ) {
                     Text(
                         stringResource(R.string.save_alarm_button),
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -167,11 +167,11 @@ fun AddEditAlarmScreen(
             // HERO WAKE-UP MISSION / CHALLENGE SECTION
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 2.dp
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -581,13 +581,13 @@ fun RepeatScheduleCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Repeat Schedule",
                 style = MaterialTheme.typography.titleMedium,

@@ -57,9 +57,13 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
         getCurrentWeather()
     }
 
-    fun getCurrentWeather() {
+    fun getCurrentWeather(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(getApplication())
+            _uiState.update { it.copy(isWeatherLoading = true) }
+            _weatherInfo.value = WeatherRepository.fetchCurrentWeather(
+                getApplication(),
+                forceRefresh = forceRefresh
+            )
             _uiState.update { it.copy(isWeatherLoading = false) }
         }
     }
@@ -75,24 +79,28 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                 when (alarm.challengeType) {
                     ChallengeType.MATH -> generateMathProblem(alarmId, snoozeDur, maxSnooze, currentSnooze)
                     ChallengeType.BARCODE -> {
-                        _uiState.value = AlarmDismissUiState(
-                            alarmId = alarmId,
-                            challengeType = ChallengeType.BARCODE,
-                            targetBarcode = alarm.targetBarcode,
-                            snoozeDurationMinutes = snoozeDur,
-                            maxSnoozeCount = maxSnooze,
-                            snoozeCount = currentSnooze
-                        )
+                        _uiState.update {
+                            it.copy(
+                                alarmId = alarmId,
+                                challengeType = ChallengeType.BARCODE,
+                                targetBarcode = alarm.targetBarcode,
+                                snoozeDurationMinutes = snoozeDur,
+                                maxSnoozeCount = maxSnooze,
+                                snoozeCount = currentSnooze
+                            )
+                        }
                     }
 
                     ChallengeType.NONE -> {
-                        _uiState.value = AlarmDismissUiState(
-                            alarmId = alarmId,
-                            challengeType = ChallengeType.NONE,
-                            snoozeDurationMinutes = snoozeDur,
-                            maxSnoozeCount = maxSnooze,
-                            snoozeCount = currentSnooze
-                        )
+                        _uiState.update {
+                            it.copy(
+                                alarmId = alarmId,
+                                challengeType = ChallengeType.NONE,
+                                snoozeDurationMinutes = snoozeDur,
+                                maxSnoozeCount = maxSnooze,
+                                snoozeCount = currentSnooze
+                            )
+                        }
                     }
                 }
             } else {
@@ -118,15 +126,17 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
             else -> "$num1 + $num2" to (num1 + num2)
         }
 
-        _uiState.value = AlarmDismissUiState(
-            alarmId = alarmId,
-            challengeType = ChallengeType.MATH,
-            equation = equation,
-            correctAnswer = answer,
-            snoozeDurationMinutes = snoozeDur,
-            maxSnoozeCount = maxSnooze,
-            snoozeCount = currentSnooze
-        )
+        _uiState.update {
+            it.copy(
+                alarmId = alarmId,
+                challengeType = ChallengeType.MATH,
+                equation = equation,
+                correctAnswer = answer,
+                snoozeDurationMinutes = snoozeDur,
+                maxSnoozeCount = maxSnooze,
+                snoozeCount = currentSnooze
+            )
+        }
     }
 
     fun onAnswerChange(newInput: String) {
@@ -194,8 +204,11 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                 it.copy(
                     isDismissed = true,
                     showMorningDashboard = true,
-                    isWeatherLoading = true
+                    isWeatherLoading = _weatherInfo.value == null
                 )
+            }
+            if (_weatherInfo.value == null) {
+                getCurrentWeather()
             }
         }
     }

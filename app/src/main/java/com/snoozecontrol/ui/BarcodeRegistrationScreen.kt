@@ -134,12 +134,12 @@ fun BarcodeRegistrationScreen(
                     ) {
                         Surface(
                             color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(28.dp),
+                            shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.fillMaxWidth(),
                             tonalElevation = 6.dp
                         ) {
                             Column(
-                                modifier = Modifier.padding(24.dp),
+                                modifier = Modifier.padding(18.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Surface(
@@ -158,17 +158,17 @@ fun BarcodeRegistrationScreen(
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
 
                                 Text(
                                     text = detectedBarcode!!,
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = TextAlign.Center
                                 )
 
-                                Spacer(modifier = Modifier.height(20.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -178,12 +178,12 @@ fun BarcodeRegistrationScreen(
                                         onClick = { detectedBarcode = null },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(50.dp),
+                                            .height(46.dp),
                                         contentPadding = PaddingValues(
                                             horizontal = 8.dp,
-                                            vertical = 8.dp
+                                            vertical = 6.dp
                                         ),
-                                        shape = RoundedCornerShape(16.dp)
+                                        shape = RoundedCornerShape(14.dp)
                                     ) {
                                         Icon(
                                             Icons.Default.Refresh,
@@ -198,12 +198,12 @@ fun BarcodeRegistrationScreen(
                                         onClick = { onBarcodeScanned(detectedBarcode!!) },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(50.dp),
+                                            .height(46.dp),
                                         contentPadding = PaddingValues(
                                             horizontal = 8.dp,
-                                            vertical = 8.dp
+                                            vertical = 6.dp
                                         ),
-                                        shape = RoundedCornerShape(16.dp)
+                                        shape = RoundedCornerShape(14.dp)
                                     ) {
                                         Icon(
                                             Icons.Default.Check,

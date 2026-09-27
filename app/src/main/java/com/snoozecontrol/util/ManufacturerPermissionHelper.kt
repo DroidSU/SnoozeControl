@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 
@@ -25,6 +26,18 @@ object ManufacturerPermissionHelper {
                 manufacturer.contains("honor")
     }
 
+    /**
+     * Checks if the app is currently exempt from battery optimizations.
+     */
+    fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && powerManager != null) {
+            powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        } else {
+            true
+        }
+    }
+
     fun hasUserDismissedAutostartPrompt(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(KEY_AUTOSTART_DISMISSED, false)
@@ -35,7 +48,21 @@ object ManufacturerPermissionHelper {
         prefs.edit().putBoolean(KEY_AUTOSTART_DISMISSED, dismissed).apply()
     }
 
+    /**
+     * Determines whether the Autostart Guidance Card should be shown to the user.
+     * Returns false if non-OEM device, if user dismissed it, or if battery optimizations are already ignored.
+     */
+    fun shouldShowAutostartGuidance(context: Context): Boolean {
+        if (!isOemDeviceRequiringAutostart()) return false
+        if (hasUserDismissedAutostartPrompt(context)) return false
+        if (isIgnoringBatteryOptimizations(context)) return false
+        return true
+    }
+
     fun openAutostartSettings(context: Context) {
+        // Mark as configured when user opens settings
+        setAutostartPromptDismissed(context, true)
+
         val manufacturer = Build.MANUFACTURER.lowercase()
         val intent = Intent()
 

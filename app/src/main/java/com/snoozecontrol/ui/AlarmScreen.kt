@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -72,6 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -81,6 +84,7 @@ import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.ManufacturerPermissionHelper
+import com.snoozecontrol.util.QuoteProvider
 import com.snoozecontrol.util.Utils
 import com.snoozecontrol.util.WeatherInfo
 import kotlin.math.roundToInt
@@ -100,8 +104,7 @@ fun AlarmScreen(
     val greeting = remember { Utils.getGreeting(context) }
     var showAutostartBanner by remember {
         mutableStateOf(
-            ManufacturerPermissionHelper.isOemDeviceRequiringAutostart() &&
-                    !ManufacturerPermissionHelper.hasUserDismissedAutostartPrompt(context)
+            ManufacturerPermissionHelper.shouldShowAutostartGuidance(context)
         )
     }
 
@@ -113,6 +116,7 @@ fun AlarmScreen(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
+                    .navigationBarsPadding()
                     .padding(8.dp)
                     .shadow(
                         elevation = 12.dp,
@@ -145,18 +149,19 @@ fun AlarmScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    bottom = innerPadding.calculateBottomPadding() + 100.dp,
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = 180.dp
+                    bottom = innerPadding.calculateBottomPadding() + 80.dp,
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 130.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (showAutostartBanner) {
                     item {
                         AutostartGuidanceCard(
                             onEnableClick = {
                                 ManufacturerPermissionHelper.openAutostartSettings(context)
+                                showAutostartBanner = false
                             },
                             onDismissClick = {
                                 ManufacturerPermissionHelper.setAutostartPromptDismissed(
@@ -192,65 +197,104 @@ fun AlarmScreen(
 
 @Composable
 fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: WeatherInfo?) {
+    val todayQuote = remember { QuoteProvider.getTodayQuote() }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
             .statusBarsPadding(),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        tonalElevation = 12.dp,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        tonalElevation = 6.dp,
         border = BorderStroke(
             0.5.dp,
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
         )
     ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = greeting,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-
-                if (nextAlarm != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.next_alarm_format, nextAlarm.displayTime),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        text = greeting,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
+
+                    if (nextAlarm != null) {
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.next_alarm_format,
+                                nextAlarm.displayTime
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                if (weatherInfo != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WbSunny,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${weatherInfo.temperatureCelsius}°C",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
-            if (weatherInfo != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
-                    shape = RoundedCornerShape(16.dp),
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.WbSunny,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "${weatherInfo.temperatureCelsius.toString()}\u00B0C",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.FormatQuote,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "“${todayQuote.text}”",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
@@ -261,8 +305,8 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: We
 fun LazyItemScope.EmptyStateView() {
     Box(
         modifier = Modifier
-            .fillParentMaxSize()
-            .padding(bottom = 120.dp),
+            .fillParentMaxHeight(0.65f)
+            .fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -342,9 +386,9 @@ fun SwipeToDismissRow(
             Box(
                 Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(32.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(color)
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 if (isSwiping) {
@@ -387,17 +431,17 @@ fun AlarmItemRow(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = if (alarm.isEnabled) 8.dp else 2.dp,
-                shape = RoundedCornerShape(32.dp),
+                elevation = if (alarm.isEnabled) 4.dp else 1.dp,
+                shape = RoundedCornerShape(22.dp),
                 clip = false
             ),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         onClick = onClick
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 24.dp, vertical = 28.dp)
+                .padding(horizontal = 18.dp, vertical = 16.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -440,8 +484,8 @@ fun AlarmItemRow(
                         text = formattedTime12,
                         style = MaterialTheme.typography.displayLarge.copy(
                             fontWeight = FontWeight.Black,
-                            fontSize = 52.sp,
-                            letterSpacing = (-1).sp
+                            fontSize = 42.sp,
+                            letterSpacing = (-0.5).sp
                         ),
                         color = if (alarm.isEnabled)
                             MaterialTheme.colorScheme.onSurface
@@ -451,13 +495,13 @@ fun AlarmItemRow(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = alarm.amPm,
-                        fontSize = 18.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = if (alarm.isEnabled)
                             MaterialTheme.colorScheme.secondary
                         else
                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 6.dp)
                     )
                 }
 

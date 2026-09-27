@@ -123,6 +123,7 @@ fun AlarmDismissScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .statusBarsPadding()
+                        .navigationBarsPadding()
                         .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
@@ -246,16 +247,16 @@ fun AlarmDismissScreen(
                     // Top Header Section
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(top = 12.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Surface(
-                                modifier = Modifier.size(100.dp),
+                                modifier = Modifier.size(80.dp),
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f * pulseAlpha)
                             ) {}
                             Surface(
-                                modifier = Modifier.size(76.dp),
+                                modifier = Modifier.size(60.dp),
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primary
                             ) {
@@ -263,14 +264,14 @@ fun AlarmDismissScreen(
                                     imageVector = Icons.Default.Alarm,
                                     contentDescription = null,
                                     modifier = Modifier
-                                        .padding(18.dp)
+                                        .padding(14.dp)
                                         .fillMaxSize(),
                                     tint = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Surface(
                             shape = RoundedCornerShape(10.dp),
@@ -307,14 +308,14 @@ fun AlarmDismissScreen(
                     // Middle Math Challenge Card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(28.dp),
+                            modifier = Modifier.padding(20.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -324,14 +325,14 @@ fun AlarmDismissScreen(
                                 color = MaterialTheme.colorScheme.secondary
                             )
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
                                 text = equation,
                                 style = MaterialTheme.typography.displayLarge.copy(
                                     fontWeight = FontWeight.Black,
-                                    fontSize = 54.sp,
-                                    letterSpacing = (-1).sp
+                                    fontSize = 42.sp,
+                                    letterSpacing = (-0.5).sp
                                 ),
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -393,8 +394,8 @@ fun AlarmDismissScreen(
                                 onClick = onSnoozeClick,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(52.dp),
-                                shape = RoundedCornerShape(20.dp),
+                                    .height(46.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -403,17 +404,17 @@ fun AlarmDismissScreen(
                                 Icon(
                                     imageVector = Icons.Default.Alarm,
                                     contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Snooze (+${snoozeDurationMinutes}m) • $remainingSnoozes left",
-                                    fontSize = 16.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
 
                         // Bottom Dismiss Action Button
@@ -421,8 +422,8 @@ fun AlarmDismissScreen(
                             onClick = onDismissClick,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
-                            shape = RoundedCornerShape(20.dp),
+                                .height(48.dp),
+                            shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -434,10 +435,10 @@ fun AlarmDismissScreen(
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = stringResource(R.string.dismiss_alarm_button),
-                                fontSize = 18.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }

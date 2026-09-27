@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -22,10 +23,29 @@ import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.ui.AddEditAlarmScreen
 import com.snoozecontrol.ui.BarcodeRegistrationScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.util.PermissionManager
 import com.snoozecontrol.viewmodel.AddEditAlarmViewModel
 
 class AddAlarmActivity : ComponentActivity() {
     private val viewModel: AddEditAlarmViewModel by viewModels()
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        viewModel.saveAlarm(this) {
+            setResult(RESULT_OK)
+            finish()
+        }
+    }
+
+    private var pendingNavigateToBarcode = false
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pendingNavigateToBarcode = false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,9 +112,18 @@ class AddAlarmActivity : ComponentActivity() {
                                 onSnoozeDurationChange = viewModel::onSnoozeDurationChange,
                                 onBedtimeReminderToggle = viewModel::onBedtimeReminderToggle,
                                 onSave = {
-                                    viewModel.saveAlarm(this@AddAlarmActivity) {
-                                        setResult(RESULT_OK)
-                                        finish()
+                                    if (!PermissionManager.hasNotificationPermission(this@AddAlarmActivity)) {
+                                        PermissionManager.getNotificationPermission()?.let { perm ->
+                                            notificationPermissionLauncher.launch(perm)
+                                        } ?: viewModel.saveAlarm(this@AddAlarmActivity) {
+                                            setResult(RESULT_OK)
+                                            finish()
+                                        }
+                                    } else {
+                                        viewModel.saveAlarm(this@AddAlarmActivity) {
+                                            setResult(RESULT_OK)
+                                            finish()
+                                        }
                                     }
                                 },
                                 onBack = {
@@ -102,7 +131,12 @@ class AddAlarmActivity : ComponentActivity() {
                                     finish()
                                 },
                                 onRegisterBarcodeClick = {
-                                    navController.navigate("register_barcode")
+                                    if (!PermissionManager.hasCameraPermission(this@AddAlarmActivity)) {
+                                        pendingNavigateToBarcode = true
+                                        cameraPermissionLauncher.launch(PermissionManager.getCameraPermission())
+                                    } else {
+                                        navController.navigate("register_barcode")
+                                    }
                                 }
                             )
                         }

@@ -3,13 +3,13 @@ package com.snoozecontrol
 import android.Manifest
 import android.app.KeyguardManager
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,11 +34,33 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.snoozecontrol.ui.AlarmScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.util.PermissionManager
 import com.snoozecontrol.viewmodel.AlarmViewModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AlarmViewModel by viewModels()
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fine = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarse = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        if (fine || coarse) {
+            viewModel.getCurrentWeather(forceRefresh = true)
+        }
+    }
+
+    private var pendingToggleAlarmId: Int? = null
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        pendingToggleAlarmId?.let { id ->
+            viewModel.toggleAlarm(this, id)
+            pendingToggleAlarmId = null
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +68,8 @@ class MainActivity : ComponentActivity() {
         setupLockScreenFlags()
         enableEdgeToEdge()
 
-        requestAppPermissions()
+        // Check & request location permission on app open for weather temperature display
+        checkAndRequestLocationPermission()
 
         handleIntent(intent)
 
@@ -88,12 +111,20 @@ class MainActivity : ComponentActivity() {
                                         )
                                     },
                                     onToggleAlarm = { id ->
-                                        viewModel.toggleAlarm(
-                                            this@MainActivity,
-                                            id
-                                        )
+                                        if (!PermissionManager.hasNotificationPermission(this@MainActivity)) {
+                                            pendingToggleAlarmId = id
+                                            PermissionManager.getNotificationPermission()
+                                                ?.let { perm ->
+                                                    notificationPermissionLauncher.launch(perm)
+                                                } ?: viewModel.toggleAlarm(this@MainActivity, id)
+                                        } else {
+                                            viewModel.toggleAlarm(
+                                                this@MainActivity,
+                                                id
+                                            )
+                                        }
                                     },
-                                    onDeleteAlarm = { alarm -> 
+                                    onDeleteAlarm = { alarm ->
                                         viewModel.deleteAlarm(this@MainActivity, alarm)
                                         scope.launch {
                                             val result = snackbarHostState.showSnackbar(
@@ -135,20 +166,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestAppPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
-            }
-        }
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), 102)
-        }
-        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION), 103)
-        }
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 104)
+    private fun checkAndRequestLocationPermission() {
+        if (PermissionManager.hasLocationPermission(this)) {
+            viewModel.getCurrentWeather(forceRefresh = true)
+        } else {
+            locationPermissionLauncher.launch(PermissionManager.getLocationPermissions())
         }
     }
 

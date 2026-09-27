@@ -2,36 +2,57 @@ package com.snoozecontrol.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Sunrise & Starlight Palette - Refined Dark & Light Tones
-val SunsetCoral = Color(0xFFFF7E5F)
-val SoftSunsetCoral = Color(0xFFFF9E88)
-val ElectricIndigo = Color(0xFF6A5AE0)
-val SoftLavender = Color(0xFFA594F9)
+// 🌞 Light Theme: "Modern Morning" (65% Professional Slate & Royal Indigo + 35% Playful Warm Coral)
+val LightBackground = Color(0xFFF8FAFC)      // Soft Ice Slate background
+val LightSurface = Color(0xFFFFFFFF)         // Crisp white card surface
+val LightSurfaceVariant = Color(0xFFF1F5F9)  // Muted card variant
+val LightOnSurface = Color(0xFF0F172A)       // Deep obsidian text
+val LightOnSurfaceVariant = Color(0xFF64748B) // Slate secondary text
 
-// Dark Theme Colors (Softer Contrast, Richer Slate Tones)
-val MidnightAbyss = Color(0xFF121620) // Deep slate midnight background
-val SteelNavy = Color(0xFF1E2433)     // Elevated slate navy surface
-val SurfaceVariantDark = Color(0xFF273042) // Card container variant
-val OnSurfaceDark = Color(0xFFE2E8F0)  // Off-white text to reduce eye strain glare
-val OnSurfaceVariantDark = Color(0xFF94A3B8) // Muted slate secondary text
-val PrimaryContainerDark = Color(0xFF4A2521)
-val OnPrimaryContainerDark = Color(0xFFFFDBCF)
-val SecondaryContainerDark = Color(0xFF2E2A4A)
-val OnSecondaryContainerDark = Color(0xFFE5DEFF)
-val OutlineDark = Color(0xFF3B475D)
-val OutlineVariantDark = Color(0xFF2A3344)
+val LightPrimary = Color(0xFFFF5A36)          // Warm Coral Sunrise (Playful 35% Pop)
+val LightOnPrimary = Color(0xFFFFFFFF)
+val LightPrimaryContainer = Color(0xFFFFF1EE)
+val LightOnPrimaryContainer = Color(0xFF8A1E08)
 
-// Light Theme Colors
-val CloudWhite = Color(0xFFF8F9FE)
-val SoftPeach = Color(0xFFFEB47B)
-val MorningGold = Color(0xFFFFD166)
-val SurfaceVariantLight = Color(0xFFF1F5F9)
-val OnSurfaceVariantLight = Color(0xFF64748B)
-val PrimaryContainerLight = Color(0xFFFFEDE8)
-val OnPrimaryContainerLight = Color(0xFF3D0C03)
-val SecondaryContainerLight = Color(0xFFEEECFF)
-val OnSecondaryContainerLight = Color(0xFF1D1263)
+val LightSecondary = Color(0xFF4F46E5)        // Royal Indigo (Professional 65% Tech Accent)
+val LightOnSecondary = Color(0xFFFFFFFF)
+val LightSecondaryContainer = Color(0xFFEEF2FF)
+val LightOnSecondaryContainer = Color(0xFF1E1B4B)
+
+val LightTertiary = Color(0xFFF59E0B)         // Sunny Amber
+val LightOnTertiary = Color(0xFFFFFFFF)
+val LightTertiaryContainer = Color(0xFFFEF3C7)
+val LightOnTertiaryContainer = Color(0xFF78350F)
+
+val LightOutline = Color(0xFFE2E8F0)
+val LightOutlineVariant = Color(0xFFCBD5E1)
+
+
+// 🌙 Dark Theme: "Midnight Stellar" (65% Professional Midnight Slate & Iris Lavender + 35% Playful Sunset Coral Glow)
+val DarkBackground = Color(0xFF0B0F17)       // Deep Midnight Slate
+val DarkSurface = Color(0xFF1E293B)          // Steel Navy card surface
+val DarkSurfaceVariant = Color(0xFF27354A)   // Elevated container variant
+val DarkOnSurface = Color(0xFFF1F5F9)        // Soft Platinum text
+val DarkOnSurfaceVariant = Color(0xFF94A3B8)  // Muted Slate secondary text
+
+val DarkPrimary = Color(0xFFFF7A59)           // Glowing Sunset Coral (Playful 35% Accent)
+val DarkOnPrimary = Color(0xFF381005)
+val DarkPrimaryContainer = Color(0xFF3D1813)
+val DarkOnPrimaryContainer = Color(0xFFFFDCD3)
+
+val DarkSecondary = Color(0xFF818CF8)         // Luminous Iris Lavender (Professional 65% Accent)
+val DarkOnSecondary = Color(0xFF1E1B4B)
+val DarkSecondaryContainer = Color(0xFF232850)
+val DarkOnSecondaryContainer = Color(0xFFE0E7FF)
+
+val DarkTertiary = Color(0xFFFBBF24)          // Golden Sunrise
+val DarkOnTertiary = Color(0xFF451A03)
+val DarkTertiaryContainer = Color(0xFF3A2B11)
+val DarkOnTertiaryContainer = Color(0xFFFEF3C7)
+
+val DarkOutline = Color(0xFF334155)
+val DarkOutlineVariant = Color(0xFF1E293B)
 
 // Functional Colors
-val ErrorRed = Color(0xFFE57373)
-val SuccessGreen = Color(0xFF81C784)
+val ErrorRed = Color(0xFFEF4444)
+val SuccessGreen = Color(0xFF10B981)
