@@ -34,6 +34,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.snoozecontrol.ui.AlarmScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.util.ManufacturerPermissionHelper
 import com.snoozecontrol.util.PermissionManager
 import com.snoozecontrol.viewmodel.AlarmViewModel
 import kotlinx.coroutines.launch
@@ -70,6 +71,9 @@ class MainActivity : ComponentActivity() {
 
         // Check & request location permission on app open for weather temperature display
         checkAndRequestLocationPermission()
+
+        // Check & request background execution / battery optimization exemption on app launch
+        checkAndRequestBackgroundExecutionPermissions()
 
         handleIntent(intent)
 
@@ -171,6 +175,16 @@ class MainActivity : ComponentActivity() {
             viewModel.getCurrentWeather(forceRefresh = true)
         } else {
             locationPermissionLauncher.launch(PermissionManager.getLocationPermissions())
+        }
+    }
+
+    private fun checkAndRequestBackgroundExecutionPermissions() {
+        if (!ManufacturerPermissionHelper.isIgnoringBatteryOptimizations(this)) {
+            ManufacturerPermissionHelper.requestIgnoreBatteryOptimizations(this)
+        } else if (ManufacturerPermissionHelper.isOemDeviceRequiringAutostart() &&
+            !ManufacturerPermissionHelper.hasUserDismissedAutostartPrompt(this)
+        ) {
+            ManufacturerPermissionHelper.openAutostartSettings(this)
         }
     }
 

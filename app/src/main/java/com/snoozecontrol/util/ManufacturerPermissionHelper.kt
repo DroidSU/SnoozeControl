@@ -8,11 +8,18 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
+import androidx.core.content.edit
 
 object ManufacturerPermissionHelper {
 
     private const val PREFS_NAME = "snooze_control_oem_prefs"
     private const val KEY_AUTOSTART_DISMISSED = "autostart_prompt_dismissed"
+    private const val KEY_AUTOSTART_DISMISSED_TIMESTAMP = "autostart_prompt_dismissed_timestamp"
+
+    /**
+     * Default TTL expiry duration for autostart dismissal prompt: 14 days.
+     */
+    const val DEFAULT_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000L
 
     fun isOemDeviceRequiringAutostart(): Boolean {
         val manufacturer = Build.MANUFACTURER.lowercase()
@@ -31,26 +38,83 @@ object ManufacturerPermissionHelper {
      */
     fun isIgnoringBatteryOptimizations(context: Context): Boolean {
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && powerManager != null) {
+        return if (powerManager != null) {
             powerManager.isIgnoringBatteryOptimizations(context.packageName)
         } else {
             true
         }
     }
 
-    fun hasUserDismissedAutostartPrompt(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_AUTOSTART_DISMISSED, false)
+    /**
+     * Shows the direct system popup dialog asking the user to allow the app to run in the background without battery restrictions.
+     */
+    fun requestIgnoreBatteryOptimizations(context: Context) {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e("ManufacturerHelper", "Failed to show battery optimization dialog", e)
+                openAppInfoSettings(context)
+            }
+        }
     }
 
+    /**
+     * Checks if the user previously dismissed or configured the autostart prompt.
+     * Automatically expires the dismissal after [expiryMillis] (default 14 days) so the prompt remains updated.
+     */
+    fun hasUserDismissedAutostartPrompt(
+        context: Context,
+        expiryMillis: Long = DEFAULT_EXPIRY_MS
+    ): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val isDismissed = prefs.getBoolean(KEY_AUTOSTART_DISMISSED, false)
+        if (!isDismissed) return false
+
+        val now = System.currentTimeMillis()
+        val timestamp = prefs.getLong(KEY_AUTOSTART_DISMISSED_TIMESTAMP, 0L)
+
+        // Handle legacy saved preference without timestamp
+        if (timestamp == 0L) {
+            prefs.edit { putLong(KEY_AUTOSTART_DISMISSED_TIMESTAMP, now) }
+            return true
+        }
+
+        // Check if dismissal has expired
+        val age = now - timestamp
+        if (age > expiryMillis) {
+            // Dismissal expired - clear state so prompt can show again if needed
+            setAutostartPromptDismissed(context, false)
+            return false
+        }
+
+        return true
+    }
+
+    /**
+     * Saves the autostart prompt dismissal status along with the current timestamp.
+     */
     fun setAutostartPromptDismissed(context: Context, dismissed: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_AUTOSTART_DISMISSED, dismissed).apply()
+        val now = System.currentTimeMillis()
+        prefs.edit {
+            putBoolean(KEY_AUTOSTART_DISMISSED, dismissed)
+            if (dismissed) {
+                putLong(KEY_AUTOSTART_DISMISSED_TIMESTAMP, now)
+            } else {
+                remove(KEY_AUTOSTART_DISMISSED_TIMESTAMP)
+            }
+        }
     }
 
     /**
      * Determines whether the Autostart Guidance Card should be shown to the user.
-     * Returns false if non-OEM device, if user dismissed it, or if battery optimizations are already ignored.
+     * Returns false if non-OEM device, if user dismissed it (and not expired), or if battery optimizations are already ignored.
      */
     fun shouldShowAutostartGuidance(context: Context): Boolean {
         if (!isOemDeviceRequiringAutostart()) return false
