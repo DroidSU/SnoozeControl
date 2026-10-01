@@ -152,6 +152,13 @@ class AndroidAlarmScheduler(
 
     private fun calculateNextAlarmCalendar(item: AlarmItem): Calendar {
         val now = Calendar.getInstance()
+
+        if (item.snoozedUntilMillis != null && item.snoozedUntilMillis > now.timeInMillis) {
+            return Calendar.getInstance().apply {
+                timeInMillis = item.snoozedUntilMillis
+            }
+        }
+
         val calendar = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, item.hour)
             set(Calendar.MINUTE, item.minute)

@@ -15,16 +15,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,8 +42,10 @@ import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.ManufacturerPermissionHelper
 import com.snoozecontrol.util.PermissionManager
 import com.snoozecontrol.viewmodel.AlarmViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: AlarmViewModel by viewModels()
 
@@ -69,9 +76,6 @@ class MainActivity : ComponentActivity() {
         setupLockScreenFlags()
         enableEdgeToEdge()
 
-        // Check & request location permission on app open for weather temperature display
-        checkAndRequestLocationPermission()
-
         // Check & request background execution / battery optimization exemption on app launch
         checkAndRequestBackgroundExecutionPermissions()
 
@@ -84,6 +88,10 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
+
+            var showLocationRationale by remember {
+                mutableStateOf(!PermissionManager.hasLocationPermission(context))
+            }
 
             SnoozeControlTheme {
                 Surface(
@@ -130,6 +138,7 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onDeleteAlarm = { alarm ->
                                         viewModel.deleteAlarm(this@MainActivity, alarm)
+                                        snackbarHostState.currentSnackbarData?.dismiss()
                                         scope.launch {
                                             val result = snackbarHostState.showSnackbar(
                                                 message = getString(R.string.snackbar_alarm_deleted),
@@ -143,6 +152,31 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
+                        }
+
+                        if (showLocationRationale) {
+                            AlertDialog(
+                                onDismissRequest = { showLocationRationale = false },
+                                title = { Text("Local Weather Forecast") },
+                                text = {
+                                    Text("Snooze Control uses your approximate location to display live local weather conditions and temperature on your morning wake-up dashboard.")
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showLocationRationale = false
+                                            locationPermissionLauncher.launch(PermissionManager.getLocationPermissions())
+                                        }
+                                    ) {
+                                        Text("Continue")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showLocationRationale = false }) {
+                                        Text("Not Now")
+                                    }
+                                }
+                            )
                         }
 
                         SnackbarHost(
@@ -167,14 +201,6 @@ class MainActivity : ComponentActivity() {
         if (intent?.getBooleanExtra("ALARM_TRIGGERED", false) == true) {
             val alarmId = intent.getIntExtra("ALARM_ID", -1)
             startActivity(AlarmDismissActivity.createIntent(this, alarmId))
-        }
-    }
-
-    private fun checkAndRequestLocationPermission() {
-        if (PermissionManager.hasLocationPermission(this)) {
-            viewModel.getCurrentWeather(forceRefresh = true)
-        } else {
-            locationPermissionLauncher.launch(PermissionManager.getLocationPermissions())
         }
     }
 

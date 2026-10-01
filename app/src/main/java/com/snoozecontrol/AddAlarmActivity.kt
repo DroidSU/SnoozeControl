@@ -2,6 +2,9 @@ package com.snoozecontrol
 
 import android.content.Context
 import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,12 +23,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
+import com.snoozecontrol.model.MathDifficulty
 import com.snoozecontrol.ui.AddEditAlarmScreen
 import com.snoozecontrol.ui.BarcodeRegistrationScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.PermissionManager
 import com.snoozecontrol.viewmodel.AddEditAlarmViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class AddAlarmActivity : ComponentActivity() {
     private val viewModel: AddEditAlarmViewModel by viewModels()
 
@@ -47,6 +53,41 @@ class AddAlarmActivity : ComponentActivity() {
         }
     }
 
+    private val ringtonePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                result.data?.getParcelableExtra(
+                    RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                    Uri::class.java
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            }
+            val title = if (uri != null) {
+                RingtoneManager.getRingtone(this, uri)?.getTitle(this) ?: "Selected Sound"
+            } else {
+                "Default Alarm Sound"
+            }
+            viewModel.onRingtoneSelected(uri?.toString(), title)
+        }
+    }
+
+    private fun launchRingtonePicker(currentUriStr: String?) {
+        val currentUri = currentUriStr?.let { Uri.parse(it) }
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, currentUri)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+        }
+        ringtonePickerLauncher.launch(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -55,7 +96,11 @@ class AddAlarmActivity : ComponentActivity() {
         val alarmHour = intent.getIntExtra(EXTRA_ALARM_HOUR, -1)
         val alarmMinute = intent.getIntExtra(EXTRA_ALARM_MINUTE, -1)
         val alarmChallengeStr = intent.getStringExtra(EXTRA_ALARM_CHALLENGE)
+        val alarmDifficultyStr = intent.getStringExtra(EXTRA_ALARM_DIFFICULTY)
         val alarmBarcode = intent.getStringExtra(EXTRA_ALARM_BARCODE)
+        val alarmRingtoneUri = intent.getStringExtra(EXTRA_ALARM_RINGTONE_URI)
+        val alarmRingtoneTitle =
+            intent.getStringExtra(EXTRA_ALARM_RINGTONE_TITLE) ?: "Default Alarm Sound"
         val alarmRepeatDays = intent.getStringExtra(EXTRA_ALARM_REPEAT_DAYS) ?: ""
         val alarmSnoozeDuration = intent.getIntExtra(EXTRA_ALARM_SNOOZE_DURATION, 5)
 
@@ -70,7 +115,14 @@ class AddAlarmActivity : ComponentActivity() {
                 } catch (e: Exception) {
                     ChallengeType.MATH
                 },
+                mathDifficulty = try {
+                    MathDifficulty.valueOf(alarmDifficultyStr ?: "MEDIUM")
+                } catch (e: Exception) {
+                    MathDifficulty.MEDIUM
+                },
                 targetBarcode = alarmBarcode,
+                ringtoneUri = alarmRingtoneUri,
+                ringtoneTitle = alarmRingtoneTitle,
                 repeatDays = alarmRepeatDays,
                 snoozeDurationMinutes = alarmSnoozeDuration
             )
@@ -108,6 +160,8 @@ class AddAlarmActivity : ComponentActivity() {
                                 onMinuteChange = viewModel::onMinuteChange,
                                 onAmPmChange = viewModel::onAmPmChange,
                                 onChallengeTypeChange = viewModel::onChallengeTypeChange,
+                                onMathDifficultyChange = viewModel::onMathDifficultyChange,
+                                onSelectRingtoneClick = { launchRingtonePicker(uiState.ringtoneUri) },
                                 onDaysChange = viewModel::onDaysChange,
                                 onSnoozeDurationChange = viewModel::onSnoozeDurationChange,
                                 onBedtimeReminderToggle = viewModel::onBedtimeReminderToggle,
@@ -163,7 +217,10 @@ class AddAlarmActivity : ComponentActivity() {
         const val EXTRA_ALARM_HOUR = "extra_alarm_hour"
         const val EXTRA_ALARM_MINUTE = "extra_alarm_minute"
         const val EXTRA_ALARM_CHALLENGE = "extra_alarm_challenge"
+        const val EXTRA_ALARM_DIFFICULTY = "extra_alarm_difficulty"
         const val EXTRA_ALARM_BARCODE = "extra_alarm_barcode"
+        const val EXTRA_ALARM_RINGTONE_URI = "extra_alarm_ringtone_uri"
+        const val EXTRA_ALARM_RINGTONE_TITLE = "extra_alarm_ringtone_title"
         const val EXTRA_ALARM_REPEAT_DAYS = "extra_alarm_repeat_days"
         const val EXTRA_ALARM_SNOOZE_DURATION = "extra_alarm_snooze_duration"
 
@@ -177,7 +234,10 @@ class AddAlarmActivity : ComponentActivity() {
                     putExtra(EXTRA_ALARM_HOUR, alarm.hour)
                     putExtra(EXTRA_ALARM_MINUTE, alarm.minute)
                     putExtra(EXTRA_ALARM_CHALLENGE, alarm.challengeType.name)
+                    putExtra(EXTRA_ALARM_DIFFICULTY, alarm.mathDifficulty.name)
                     putExtra(EXTRA_ALARM_BARCODE, alarm.targetBarcode)
+                    putExtra(EXTRA_ALARM_RINGTONE_URI, alarm.ringtoneUri)
+                    putExtra(EXTRA_ALARM_RINGTONE_TITLE, alarm.ringtoneTitle)
                     putExtra(EXTRA_ALARM_REPEAT_DAYS, alarm.repeatDays)
                     putExtra(EXTRA_ALARM_SNOOZE_DURATION, alarm.snoozeDurationMinutes)
                 } else {

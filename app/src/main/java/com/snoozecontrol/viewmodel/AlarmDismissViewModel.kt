@@ -5,20 +5,23 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snoozecontrol.R
-import com.snoozecontrol.data.AlarmDatabase
+import com.snoozecontrol.data.AlarmDao
 import com.snoozecontrol.model.ChallengeType
-import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.model.MathDifficulty
+import com.snoozecontrol.scheduler.AlarmScheduler
 import com.snoozecontrol.util.Quote
 import com.snoozecontrol.util.QuoteProvider
 import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import com.snoozecontrol.util.WeatherInfo
 import com.snoozecontrol.util.WeatherRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import javax.inject.Inject
 
 data class AlarmDismissUiState(
     val alarmId: Int = -1,
@@ -44,8 +47,12 @@ data class AlarmDismissUiState(
         get() = (maxSnoozeCount - snoozeCount).coerceAtLeast(0)
 }
 
-class AlarmDismissViewModel(application: Application) : AndroidViewModel(application) {
-    private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
+@HiltViewModel
+class AlarmDismissViewModel @Inject constructor(
+    application: Application,
+    private val alarmDao: AlarmDao,
+    private val scheduler: AlarmScheduler
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AlarmDismissUiState())
     val uiState: StateFlow<AlarmDismissUiState> = _uiState.asStateFlow()
@@ -77,7 +84,13 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                 val currentSnooze = alarm.snoozeCount
 
                 when (alarm.challengeType) {
-                    ChallengeType.MATH -> generateMathProblem(alarmId, snoozeDur, maxSnooze, currentSnooze)
+                    ChallengeType.MATH -> generateMathProblem(
+                        alarmId,
+                        snoozeDur,
+                        maxSnooze,
+                        currentSnooze,
+                        alarm.mathDifficulty
+                    )
                     ChallengeType.BARCODE -> {
                         _uiState.update {
                             it.copy(
@@ -113,17 +126,46 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
         alarmId: Int,
         snoozeDur: Int,
         maxSnooze: Int,
-        currentSnooze: Int
+        currentSnooze: Int,
+        difficulty: MathDifficulty = MathDifficulty.MEDIUM
     ) {
-        val num1 = (1..20).random()
-        val num2 = (1..20).random()
-        val operator = listOf("+", "-", "*").random()
+        val (equation, answer) = when (difficulty) {
+            MathDifficulty.EASY -> {
+                val num1 = (1..10).random()
+                val num2 = (1..10).random()
+                val op = listOf("+", "-").random()
+                if (op == "+") "$num1 + $num2" to (num1 + num2)
+                else {
+                    val max = maxOf(num1, num2)
+                    val min = minOf(num1, num2)
+                    "$max - $min" to (max - min)
+                }
+            }
 
-        val (equation, answer) = when (operator) {
-            "+" -> "$num1 + $num2" to (num1 + num2)
-            "-" -> "$num1 - $num2" to (num1 - num2)
-            "*" -> "$num1 * $num2" to (num1 * num2)
-            else -> "$num1 + $num2" to (num1 + num2)
+            MathDifficulty.MEDIUM -> {
+                val num1 = (10..50).random()
+                val num2 = (2..12).random()
+                val op = listOf("+", "-", "*").random()
+                when (op) {
+                    "+" -> "$num1 + $num2" to (num1 + num2)
+                    "-" -> {
+                        val n2 = (1..num1).random()
+                        "$num1 - $n2" to (num1 - n2)
+                    }
+
+                    else -> "$num1 * $num2" to (num1 * num2)
+                }
+            }
+
+            MathDifficulty.HARD -> {
+                val num1 = (12..30).random()
+                val num2 = (3..15).random()
+                val num3 = (5..25).random()
+                val op = listOf("+", "-").random()
+                val prod = num1 * num2
+                if (op == "+") "$num1 * $num2 + $num3" to (prod + num3)
+                else "$num1 * $num2 - $num3" to (prod - num3)
+            }
         }
 
         _uiState.update {
@@ -190,11 +232,14 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                     val isOnce = alarm.isOnce
                     val updatedAlarm = alarm.copy(
                         snoozeCount = 0,
+                        snoozedUntilMillis = null,
                         isEnabled = if (isOnce) false else alarm.isEnabled
                     )
                     alarmDao.updateAlarm(updatedAlarm)
                     if (isOnce) {
-                        AndroidAlarmScheduler(getApplication()).cancel(updatedAlarm)
+                        scheduler.cancel(updatedAlarm)
+                    } else {
+                        scheduler.schedule(updatedAlarm)
                     }
                 }
             }
@@ -228,13 +273,12 @@ class AlarmDismissViewModel(application: Application) : AndroidViewModel(applica
                 }
                 
                 val snoozedAlarm = alarm.copy(
-                    hour = cal.get(Calendar.HOUR_OF_DAY),
-                    minute = cal.get(Calendar.MINUTE),
-                    snoozeCount = updatedSnoozeCount
+                    snoozeCount = updatedSnoozeCount,
+                    snoozedUntilMillis = cal.timeInMillis
                 )
 
                 alarmDao.updateAlarm(snoozedAlarm)
-                AndroidAlarmScheduler(context).schedule(snoozedAlarm)
+                scheduler.schedule(snoozedAlarm)
                 UpcomingAlarmNotificationManager.refreshUpcomingNotification(getApplication())
 
                 _uiState.update { it.copy(isSnoozed = true, isDismissed = true) }

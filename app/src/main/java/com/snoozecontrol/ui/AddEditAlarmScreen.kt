@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snoozecontrol.R
 import com.snoozecontrol.model.ChallengeType
+import com.snoozecontrol.model.MathDifficulty
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.Utils
 import com.snoozecontrol.viewmodel.AddEditAlarmUiState
@@ -82,6 +84,8 @@ fun AddEditAlarmScreen(
     onMinuteChange: (Int) -> Unit,
     onAmPmChange: (Boolean) -> Unit,
     onChallengeTypeChange: (ChallengeType) -> Unit,
+    onMathDifficultyChange: (MathDifficulty) -> Unit = {},
+    onSelectRingtoneClick: () -> Unit = {},
     onDaysChange: (Set<Int>) -> Unit,
     onSnoozeDurationChange: (Int) -> Unit = {},
     onBedtimeReminderToggle: (Boolean) -> Unit = {},
@@ -164,6 +168,14 @@ fun AddEditAlarmScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // ALARM SOUND SELECTION CARD
+            SoundSelectionCard(
+                ringtoneTitle = uiState.ringtoneTitle,
+                onSelectRingtoneClick = onSelectRingtoneClick
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             // HERO WAKE-UP MISSION / CHALLENGE SECTION
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -218,6 +230,34 @@ fun AddEditAlarmScreen(
                         onClick = { onChallengeTypeChange(ChallengeType.MATH) }
                     )
 
+                    if (uiState.challengeType == ChallengeType.MATH) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Difficulty:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            MathDifficulty.entries.forEach { diff ->
+                                FilterChip(
+                                    selected = uiState.mathDifficulty == diff,
+                                    onClick = { onMathDifficultyChange(diff) },
+                                    label = { Text(diff.displayName, fontSize = 12.sp) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ChallengeCard(
@@ -266,6 +306,60 @@ fun AddEditAlarmScreen(
             )
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+fun SoundSelectionCard(
+    ringtoneTitle: String,
+    onSelectRingtoneClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onSelectRingtoneClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Alarm Sound",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = ringtoneTitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = "Select Ringtone",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(20.dp)
+                )
+            }
         }
     }
 }

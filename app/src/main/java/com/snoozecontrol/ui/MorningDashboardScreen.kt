@@ -1,5 +1,7 @@
 package com.snoozecontrol.ui
 
+import android.speech.tts.TextToSpeech
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,8 +22,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.filled.AcUnit
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Grain
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.Thunderstorm
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,13 +39,20 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.Quote
+import com.snoozecontrol.util.Utils
 import com.snoozecontrol.util.WeatherInfo
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -56,8 +73,58 @@ fun MorningDashboardScreen(
     quote: Quote,
     onStartDayClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val greetingBase = remember { Utils.getGreeting(context) }
+    val greeting = remember(greetingBase) {
+        val emoji = when {
+            greetingBase.contains("Morning", ignoreCase = true) -> "☀️"
+            greetingBase.contains("Afternoon", ignoreCase = true) -> "🌤️"
+            greetingBase.contains("Evening", ignoreCase = true) -> "🌙"
+            else -> "✨"
+        }
+        "$greetingBase $emoji"
+    }
+
     val currentDateText = remember {
         SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(Date())
+    }
+
+    var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    var isSpeaking by remember { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        var textToSpeech: TextToSpeech? = null
+        textToSpeech = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech?.language = Locale.US
+            }
+        }
+        tts = textToSpeech
+
+        onDispose {
+            textToSpeech?.stop()
+            textToSpeech?.shutdown()
+        }
+    }
+
+    val toggleBriefing = {
+        val t = tts
+        if (t != null) {
+            if (isSpeaking) {
+                t.stop()
+                isSpeaking = false
+            } else {
+                val weatherText = if (weatherInfo != null)
+                    "The current weather is ${weatherInfo.conditionText} with a temperature of ${weatherInfo.temperatureCelsius} degrees Celsius."
+                else
+                    ""
+                val textToSpeak =
+                    "$greetingBase! Today is $currentDateText. $weatherText Here is your daily quote: ${quote.text} by ${quote.author}. Have a wonderful day!"
+
+                t.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "briefing_id")
+                isSpeaking = true
+            }
+        }
     }
 
     Box(
@@ -89,7 +156,11 @@ fun MorningDashboardScreen(
             ) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    border = BorderStroke(
+                        0.5.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    )
                 ) {
                     Text(
                         text = currentDateText.uppercase(),
@@ -103,7 +174,7 @@ fun MorningDashboardScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Good Morning! ☀️",
+                    text = greeting,
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Black
@@ -121,18 +192,55 @@ fun MorningDashboardScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Text-To-Speech Morning Briefing Action Pill
+            OutlinedButton(
+                onClick = toggleBriefing,
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (isSpeaking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
+                        alpha = 0.5f
+                    )
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (isSpeaking) MaterialTheme.colorScheme.primaryContainer.copy(
+                        alpha = 0.5f
+                    ) else MaterialTheme.colorScheme.surface
+                ),
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
+                Icon(
+                    imageVector = if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.Default.RecordVoiceOver,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = if (isSpeaking) "Stop Audio Briefing 🔇" else "Listen to Morning Briefing 🔊",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Weather Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    val weatherIcon = getWeatherIcon(weatherInfo?.conditionText)
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -144,7 +252,7 @@ fun MorningDashboardScreen(
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.WbSunny,
+                                    imageVector = weatherIcon,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
@@ -154,7 +262,7 @@ fun MorningDashboardScreen(
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "Today's Weather",
+                                text = "Today's Forecast",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -193,7 +301,7 @@ fun MorningDashboardScreen(
                             Column {
                                 Text(
                                     text = "${weatherInfo.temperatureCelsius}°C",
-                                    fontSize = 36.sp,
+                                    fontSize = 38.sp,
                                     fontWeight = FontWeight.Black,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -240,13 +348,14 @@ fun MorningDashboardScreen(
             // Daily Motivational Quote Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
@@ -297,16 +406,19 @@ fun MorningDashboardScreen(
 
             // Primary Start My Day Button
             Button(
-                onClick = onStartDayClick,
+                onClick = {
+                    tts?.stop()
+                    onStartDayClick()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(50.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
             ) {
                 Text(
                     text = "Start My Day",
@@ -321,6 +433,18 @@ fun MorningDashboardScreen(
                 )
             }
         }
+    }
+}
+
+private fun getWeatherIcon(condition: String?): ImageVector {
+    val cond = condition?.lowercase() ?: ""
+    return when {
+        cond.contains("rain") || cond.contains("drizzle") || cond.contains("shower") -> Icons.Default.Grain
+        cond.contains("snow") -> Icons.Default.AcUnit
+        cond.contains("thunder") -> Icons.Default.Thunderstorm
+        cond.contains("cloud") -> Icons.Default.Cloud
+        cond.contains("fog") -> Icons.Default.CloudQueue
+        else -> Icons.Default.WbSunny
     }
 }
 

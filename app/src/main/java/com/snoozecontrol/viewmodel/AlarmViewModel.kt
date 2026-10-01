@@ -5,14 +5,15 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snoozecontrol.R
-import com.snoozecontrol.data.AlarmDatabase
+import com.snoozecontrol.data.AlarmDao
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.model.DismissState
-import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.scheduler.AlarmScheduler
 import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import com.snoozecontrol.util.WeatherInfo
 import com.snoozecontrol.util.WeatherRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,13 +24,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import javax.inject.Inject
 
-class AlarmViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class AlarmViewModel @Inject constructor(
+    application: Application,
+    private val alarmDao: AlarmDao,
+    private val scheduler: AlarmScheduler
+) : AndroidViewModel(application) {
 
     private val _weatherInfo = MutableStateFlow<WeatherInfo?>(null)
     val weatherInfo = _weatherInfo.asStateFlow()
-
-    private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
 
     val alarms: StateFlow<List<AlarmItem>> = alarmDao.getAllAlarms()
         .stateIn(
@@ -98,7 +103,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 repeatDays = repeatDays
             )
             val id = alarmDao.insertAlarm(newAlarm)
-            AndroidAlarmScheduler(context).schedule(newAlarm.copy(id = id.toInt()))
+            scheduler.schedule(newAlarm.copy(id = id.toInt()))
         }
     }
 
@@ -122,7 +127,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             )
             alarmDao.updateAlarm(updatedAlarm)
             if (updatedAlarm.isEnabled) {
-                AndroidAlarmScheduler(context).schedule(updatedAlarm)
+                scheduler.schedule(updatedAlarm)
             }
         }
     }
@@ -133,7 +138,6 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             val updatedAlarm = alarm.copy(isEnabled = !alarm.isEnabled)
             alarmDao.updateAlarm(updatedAlarm)
 
-            val scheduler = AndroidAlarmScheduler(context)
             if (updatedAlarm.isEnabled) {
                 scheduler.schedule(updatedAlarm)
             } else {
@@ -146,7 +150,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             recentlyDeletedAlarm = alarm
             alarmDao.deleteAlarm(alarm)
-            AndroidAlarmScheduler(context).cancel(alarm)
+            scheduler.cancel(alarm)
         }
     }
 
@@ -156,7 +160,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 val id = alarmDao.insertAlarm(alarm.copy(id = 0))
                 val restoredAlarm = alarm.copy(id = id.toInt())
                 if (restoredAlarm.isEnabled) {
-                    AndroidAlarmScheduler(context).schedule(restoredAlarm)
+                    scheduler.schedule(restoredAlarm)
                 }
                 recentlyDeletedAlarm = null
             }

@@ -4,17 +4,20 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.snoozecontrol.data.AlarmDatabase
+import com.snoozecontrol.data.AlarmDao
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
-import com.snoozecontrol.scheduler.AndroidAlarmScheduler
+import com.snoozecontrol.model.MathDifficulty
+import com.snoozecontrol.scheduler.AlarmScheduler
 import com.snoozecontrol.util.Utils
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import javax.inject.Inject
 
 data class AddEditAlarmUiState(
     val alarmId: Int = -1,
@@ -22,7 +25,10 @@ data class AddEditAlarmUiState(
     val minute: Int = 0,
     val isAm: Boolean = true,
     val challengeType: ChallengeType = ChallengeType.MATH,
+    val mathDifficulty: MathDifficulty = MathDifficulty.MEDIUM,
     val targetBarcode: String? = null,
+    val ringtoneUri: String? = null,
+    val ringtoneTitle: String = "Default Alarm Sound",
     val selectedDays: Set<Int> = emptySet(),
     val snoozeDurationMinutes: Int = 5,
     val isBedtimeReminderEnabled: Boolean = true,
@@ -38,8 +44,12 @@ data class AddEditAlarmUiState(
         get() = challengeType != ChallengeType.BARCODE || targetBarcode != null
 }
 
-class AddEditAlarmViewModel(application: Application) : AndroidViewModel(application) {
-    private val alarmDao = AlarmDatabase.getDatabase(application).alarmDao()
+@HiltViewModel
+class AddEditAlarmViewModel @Inject constructor(
+    application: Application,
+    private val alarmDao: AlarmDao,
+    private val scheduler: AlarmScheduler
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AddEditAlarmUiState())
     val uiState: StateFlow<AddEditAlarmUiState> = _uiState.asStateFlow()
@@ -64,7 +74,10 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 minute = alarm.minute,
                 isAm = isAm,
                 challengeType = alarm.challengeType,
+                mathDifficulty = alarm.mathDifficulty,
                 targetBarcode = barcodeResult ?: alarm.targetBarcode,
+                ringtoneUri = alarm.ringtoneUri,
+                ringtoneTitle = alarm.ringtoneTitle,
                 selectedDays = days,
                 snoozeDurationMinutes = alarm.snoozeDurationMinutes,
                 isBedtimeReminderEnabled = alarm.isBedtimeReminderEnabled,
@@ -84,6 +97,7 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 minute = min,
                 isAm = isAm,
                 challengeType = ChallengeType.MATH,
+                mathDifficulty = MathDifficulty.MEDIUM,
                 targetBarcode = barcodeResult,
                 selectedDays = emptySet(),
                 snoozeDurationMinutes = 5,
@@ -107,6 +121,14 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
 
     fun onChallengeTypeChange(type: ChallengeType) {
         _uiState.update { it.copy(challengeType = type) }
+    }
+
+    fun onMathDifficultyChange(difficulty: MathDifficulty) {
+        _uiState.update { it.copy(mathDifficulty = difficulty) }
+    }
+
+    fun onRingtoneSelected(uriStr: String?, title: String) {
+        _uiState.update { it.copy(ringtoneUri = uriStr, ringtoneTitle = title) }
     }
 
     fun onBarcodeResult(barcode: String?) {
@@ -136,7 +158,10 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
                 minute = state.minute,
                 isEnabled = true,
                 challengeType = state.challengeType,
+                mathDifficulty = state.mathDifficulty,
                 targetBarcode = state.targetBarcode,
+                ringtoneUri = state.ringtoneUri,
+                ringtoneTitle = state.ringtoneTitle,
                 repeatDays = state.repeatDaysString,
                 snoozeDurationMinutes = state.snoozeDurationMinutes,
                 maxSnoozeCount = 3,
@@ -145,10 +170,10 @@ class AddEditAlarmViewModel(application: Application) : AndroidViewModel(applica
 
             if (state.alarmId == -1) {
                 val newId = alarmDao.insertAlarm(alarmItem)
-                AndroidAlarmScheduler(context).schedule(alarmItem.copy(id = newId.toInt()))
+                scheduler.schedule(alarmItem.copy(id = newId.toInt()))
             } else {
                 alarmDao.updateAlarm(alarmItem)
-                AndroidAlarmScheduler(context).schedule(alarmItem)
+                scheduler.schedule(alarmItem)
             }
             onSaved()
         }

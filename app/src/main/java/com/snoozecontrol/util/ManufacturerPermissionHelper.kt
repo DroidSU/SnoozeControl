@@ -17,7 +17,7 @@ object ManufacturerPermissionHelper {
     private const val KEY_AUTOSTART_DISMISSED_TIMESTAMP = "autostart_prompt_dismissed_timestamp"
 
     /**
-     * Default TTL expiry duration for autostart dismissal prompt: 14 days.
+     * Default TTL expiry duration for autostart dismissal prompt: 3 days.
      */
     const val DEFAULT_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000L
 
@@ -52,13 +52,16 @@ object ManufacturerPermissionHelper {
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
             try {
-                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.fromParts("package", context.packageName, null)
+                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 context.startActivity(intent)
             } catch (e: Exception) {
-                Log.e("ManufacturerHelper", "Failed to show battery optimization dialog", e)
+                Log.e(
+                    "ManufacturerHelper",
+                    "Failed to show battery optimization settings screen",
+                    e
+                )
                 openAppInfoSettings(context)
             }
         }

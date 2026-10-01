@@ -23,7 +23,9 @@ import com.snoozecontrol.ui.AlarmDismissScreen
 import com.snoozecontrol.ui.MorningDashboardScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.viewmodel.AlarmDismissViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class AlarmDismissActivity : ComponentActivity() {
     private val viewModel: AlarmDismissViewModel by viewModels()
 

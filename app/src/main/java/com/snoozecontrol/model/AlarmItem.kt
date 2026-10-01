@@ -17,7 +17,11 @@ data class AlarmItem(
     val snoozeDurationMinutes: Int = 5,
     val maxSnoozeCount: Int = 3,
     val snoozeCount: Int = 0,
-    val isBedtimeReminderEnabled: Boolean = true
+    val isBedtimeReminderEnabled: Boolean = true,
+    val snoozedUntilMillis: Long? = null,
+    val ringtoneUri: String? = null,
+    val ringtoneTitle: String = "Default Alarm Sound",
+    val mathDifficulty: MathDifficulty = MathDifficulty.MEDIUM
 ) {
     val hour12: Int
         get() = Utils.toHour12(hour)

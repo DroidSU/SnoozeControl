@@ -14,6 +14,7 @@ import com.snoozecontrol.api.KtorWeatherApiClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 
@@ -184,8 +185,10 @@ object WeatherRepository {
         var isDefaultLocationUsed = true
 
         try {
-            // 1. Fetch fresh location fix if permissions are granted
-            val currentLocation = getFreshLocation(context)
+            // 1. Fetch fresh location fix if permissions are granted (5 second timeout)
+            val currentLocation = withTimeoutOrNull(5000L) {
+                getFreshLocation(context)
+            }
             if (currentLocation != null) {
                 lat = currentLocation.latitude
                 lon = currentLocation.longitude
