@@ -58,8 +58,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -94,15 +94,14 @@ fun AddEditAlarmScreen(
     onRegisterBarcodeClick: () -> Unit
 ) {
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer(),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         stringResource(R.string.set_alarm_title),
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
                     )
                 },
                 navigationIcon = {
@@ -128,18 +127,19 @@ fun AddEditAlarmScreen(
                     onClick = onSave,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(14.dp),
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    enabled = uiState.isSaveEnabled
+                    enabled = uiState.isSaveEnabled,
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
                     Text(
                         stringResource(R.string.save_alarm_button),
-                        fontSize = 16.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -147,165 +147,185 @@ fun AddEditAlarmScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
         ) {
-            // TIME SELECTION CARD
-            TimePickerCard(
-                hour12 = uiState.hour12,
-                minute = uiState.minute,
-                isAm = uiState.isAm,
-                onHourChange = onHourChange,
-                onMinuteChange = onMinuteChange,
-                onAmPmChange = onAmPmChange
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // ALARM SOUND SELECTION CARD
-            SoundSelectionCard(
-                ringtoneTitle = uiState.ringtoneTitle,
-                onSelectRingtoneClick = onSelectRingtoneClick
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // HERO WAKE-UP MISSION / CHALLENGE SECTION
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer
-                            ) {
-                                Text(
-                                    text = "MISSION",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.wakeup_challenge_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
+                // TIME SELECTION CARD
+                TimePickerCard(
+                    hour12 = uiState.hour12,
+                    minute = uiState.minute,
+                    isAm = uiState.isAm,
+                    onHourChange = onHourChange,
+                    onMinuteChange = onMinuteChange,
+                    onAmPmChange = onAmPmChange
+                )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.wakeup_challenge_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // ALARM SOUND SELECTION CARD
+                SoundSelectionCard(
+                    ringtoneTitle = uiState.ringtoneTitle,
+                    onSelectRingtoneClick = onSelectRingtoneClick
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // HERO WAKE-UP MISSION / CHALLENGE SECTION
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 3.dp,
+                    border = BorderStroke(
+                        0.5.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    ChallengeCard(
-                        title = stringResource(R.string.math_challenge_title),
-                        description = stringResource(R.string.math_challenge_desc),
-                        icon = Icons.Default.Calculate,
-                        isSelected = uiState.challengeType == ChallengeType.MATH,
-                        showOpensScreenIndicator = false,
-                        onClick = { onChallengeTypeChange(ChallengeType.MATH) }
-                    )
-
-                    if (uiState.challengeType == ChallengeType.MATH) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Difficulty:",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            MathDifficulty.entries.forEach { diff ->
-                                FilterChip(
-                                    selected = uiState.mathDifficulty == diff,
-                                    onClick = { onMathDifficultyChange(diff) },
-                                    label = { Text(diff.displayName, fontSize = 12.sp) },
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
                                     shape = RoundedCornerShape(10.dp),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Text(
+                                        text = "MISSION",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(
+                                            horizontal = 10.dp,
+                                            vertical = 5.dp
+                                        )
                                     )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = stringResource(R.string.wakeup_challenge_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = stringResource(R.string.wakeup_challenge_subtitle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
 
-                    ChallengeCard(
-                        title = stringResource(R.string.barcode_challenge_title),
-                        description = if (uiState.targetBarcode != null)
-                            "Scan registered barcode to dismiss alarm."
-                        else
-                            stringResource(R.string.barcode_challenge_desc),
-                        icon = Icons.Default.QrCodeScanner,
-                        isSelected = uiState.challengeType == ChallengeType.BARCODE,
-                        showOpensScreenIndicator = true,
-                        registeredBarcode = uiState.targetBarcode,
-                        onRescanClick = onRegisterBarcodeClick,
-                        onClick = {
-                            onChallengeTypeChange(ChallengeType.BARCODE)
-                            if (uiState.targetBarcode == null) {
-                                onRegisterBarcodeClick()
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        ChallengeCard(
+                            title = stringResource(R.string.math_challenge_title),
+                            description = stringResource(R.string.math_challenge_desc),
+                            icon = Icons.Default.Calculate,
+                            isSelected = uiState.challengeType == ChallengeType.MATH,
+                            showOpensScreenIndicator = false,
+                            onClick = { onChallengeTypeChange(ChallengeType.MATH) }
+                        )
+
+                        if (uiState.challengeType == ChallengeType.MATH) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Difficulty:",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                MathDifficulty.entries.forEach { diff ->
+                                    FilterChip(
+                                        selected = uiState.mathDifficulty == diff,
+                                        onClick = { onMathDifficultyChange(diff) },
+                                        label = { Text(diff.displayName, fontSize = 12.sp) },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    )
+                                }
                             }
                         }
-                    )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        ChallengeCard(
+                            title = stringResource(R.string.barcode_challenge_title),
+                            description = if (uiState.targetBarcode != null)
+                                "Scan registered barcode to dismiss alarm."
+                            else
+                                stringResource(R.string.barcode_challenge_desc),
+                            icon = Icons.Default.QrCodeScanner,
+                            isSelected = uiState.challengeType == ChallengeType.BARCODE,
+                            showOpensScreenIndicator = true,
+                            registeredBarcode = uiState.targetBarcode,
+                            onRescanClick = onRegisterBarcodeClick,
+                            onClick = {
+                                onChallengeTypeChange(ChallengeType.BARCODE)
+                                if (uiState.targetBarcode == null) {
+                                    onRegisterBarcodeClick()
+                                }
+                            }
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // SNOOZE SETTINGS SECTION
+                SnoozeSettingsCard(
+                    snoozeDurationMinutes = uiState.snoozeDurationMinutes,
+                    onSnoozeDurationChange = onSnoozeDurationChange
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // BEDTIME REMINDER SECTION
+                BedtimeReminderCard(
+                    isEnabled = uiState.isBedtimeReminderEnabled,
+                    onToggle = onBedtimeReminderToggle
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // REPEAT SCHEDULE SECTION
+                RepeatScheduleCard(
+                    selectedDays = uiState.selectedDays,
+                    onDaysChange = onDaysChange
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // SNOOZE SETTINGS SECTION
-            SnoozeSettingsCard(
-                snoozeDurationMinutes = uiState.snoozeDurationMinutes,
-                onSnoozeDurationChange = onSnoozeDurationChange
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // BEDTIME REMINDER SECTION
-            BedtimeReminderCard(
-                isEnabled = uiState.isBedtimeReminderEnabled,
-                onToggle = onBedtimeReminderToggle
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // REPEAT SCHEDULE SECTION
-            RepeatScheduleCard(
-                selectedDays = uiState.selectedDays,
-                onDaysChange = onDaysChange
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -317,17 +337,18 @@ fun SoundSelectionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
         onClick = onSelectRingtoneClick
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -349,15 +370,16 @@ fun SoundSelectionCard(
             Spacer(modifier = Modifier.width(12.dp))
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
+                color = MaterialTheme.colorScheme.primaryContainer,
+                tonalElevation = 2.dp
             ) {
                 Icon(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = "Select Ringtone",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .padding(8.dp)
-                        .size(20.dp)
+                        .padding(10.dp)
+                        .size(22.dp)
                 )
             }
         }
@@ -376,25 +398,26 @@ fun TimePickerCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Time",
+                text = "Alarm Time",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.align(Alignment.Start)
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Main Time Display
             val formattedTime = remember(hour12, minute) {
@@ -407,7 +430,7 @@ fun TimePickerCard(
             ) {
                 Text(
                     text = formattedTime,
-                    fontSize = 42.sp,
+                    fontSize = 46.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp,
                     color = MaterialTheme.colorScheme.primary
@@ -415,14 +438,14 @@ fun TimePickerCard(
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = amPmText,
-                    fontSize = 17.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Custom Compact Wheel Selector Body
             CustomDrumTimePicker(
@@ -432,7 +455,7 @@ fun TimePickerCard(
                 onMinuteChange = onMinuteChange
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // AM / PM Segmented Switch Pill
             AmPmSegmentedControl(isAm = isAm, onAmPmChange = onAmPmChange)
@@ -447,14 +470,14 @@ fun AmPmSegmentedControl(
     onAmPmChange: (Boolean) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
-            .fillMaxWidth(0.8f)
-            .height(40.dp)
+            .fillMaxWidth(0.85f)
+            .height(44.dp)
     ) {
         Row(
-            modifier = Modifier.padding(3.dp),
+            modifier = Modifier.padding(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val amBg by animateColorAsState(
@@ -469,10 +492,10 @@ fun AmPmSegmentedControl(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(13.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(amBg)
                     .clickable { onAmPmChange(true) }
-                    .padding(vertical = 6.dp),
+                    .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -486,10 +509,10 @@ fun AmPmSegmentedControl(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(13.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(pmBg)
                     .clickable { onAmPmChange(false) }
-                    .padding(vertical = 6.dp),
+                    .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -514,7 +537,7 @@ fun CustomDrumTimePicker(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(135.dp),
+            .height(140.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -529,10 +552,10 @@ fun CustomDrumTimePicker(
 
         Text(
             text = ":",
-            fontSize = 26.sp,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 6.dp)
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
 
         // Minute Wheel (0..59)
@@ -601,16 +624,16 @@ fun WheelColumn(
     }
 
     Box(
-        modifier = modifier.height(135.dp),
+        modifier = modifier.height(140.dp),
         contentAlignment = Alignment.Center
     ) {
         // Selection Center Bar Highlight
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .height(44.dp),
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                .fillMaxWidth(0.75f)
+                .height(46.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
         ) {}
 
@@ -629,17 +652,17 @@ fun WheelColumn(
                 val isSelected = itemValue == selectedValue
 
                 val alpha = if (isSelected) 1f else 0.35f
-                val scale = if (isSelected) 1.18f else 0.85f
+                val scale = if (isSelected) 1.2f else 0.85f
 
                 Box(
                     modifier = Modifier
-                        .height(45.dp)
+                        .height(46.dp)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = format(itemValue),
-                        fontSize = 22.sp,
+                        fontSize = 24.sp,
                         fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
@@ -675,13 +698,14 @@ fun RepeatScheduleCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = "Repeat Schedule",
                 style = MaterialTheme.typography.titleMedium,
@@ -694,7 +718,7 @@ fun RepeatScheduleCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Horizontally Scrollable Preset Chips
             Row(
@@ -707,7 +731,7 @@ fun RepeatScheduleCard(
                     selected = isOnce,
                     onClick = { onDaysChange(emptySet()) },
                     label = { Text("Once", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -718,7 +742,7 @@ fun RepeatScheduleCard(
                     selected = isDaily,
                     onClick = { onDaysChange(setOf(1, 2, 3, 4, 5, 6, 7)) },
                     label = { Text("Daily", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -735,7 +759,7 @@ fun RepeatScheduleCard(
                             fontWeight = FontWeight.SemiBold
                         )
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -752,7 +776,7 @@ fun RepeatScheduleCard(
                             fontWeight = FontWeight.SemiBold
                         )
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -760,7 +784,7 @@ fun RepeatScheduleCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Days of Week Pills: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
             val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -780,7 +804,7 @@ fun RepeatScheduleCard(
 
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(42.dp)
                             .clip(CircleShape)
                             .background(bg)
                             .clickable {
@@ -821,7 +845,8 @@ fun SnoozeSettingsCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -835,20 +860,26 @@ fun SnoozeSettingsCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "Max 3 snoozes",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                ) {
+                    Text(
+                        text = "Max 3 times",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
             Text(
-                text = "Select snooze duration",
+                text = "Select snooze duration interval",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             val durations = listOf(5, 10, 15)
             Row(
@@ -867,7 +898,7 @@ fun SnoozeSettingsCard(
                                 fontWeight = FontWeight.SemiBold
                             )
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimary
@@ -892,7 +923,8 @@ fun BedtimeReminderCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier

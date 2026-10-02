@@ -1,6 +1,13 @@
 package com.snoozecontrol.ui
 
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -44,12 +51,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -77,8 +86,8 @@ fun MorningDashboardScreen(
     val greetingBase = remember { Utils.getGreeting(context) }
     val greeting = remember(greetingBase) {
         val emoji = when {
-            greetingBase.contains("Morning", ignoreCase = true) -> "☀️"
-            greetingBase.contains("Afternoon", ignoreCase = true) -> "🌤️"
+            greetingBase.contains("Morning", ignoreCase = true) -> "🌅"
+            greetingBase.contains("Afternoon", ignoreCase = true) -> "☀️"
             greetingBase.contains("Evening", ignoreCase = true) -> "🌙"
             else -> "✨"
         }
@@ -91,19 +100,57 @@ fun MorningDashboardScreen(
 
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var isSpeaking by remember { mutableStateOf(false) }
+    var hasAutoPlayed by remember { mutableStateOf(false) }
+
+    val startBriefing = remember(tts, weatherInfo, quote, greetingBase, currentDateText) {
+        {
+            val t = tts
+            if (t != null) {
+                val weatherText = if (weatherInfo != null)
+                    "The current weather is ${weatherInfo.conditionText} with a temperature of ${weatherInfo.temperatureCelsius} degrees Celsius."
+                else
+                    ""
+                val textToSpeak =
+                    "$greetingBase! Today is $currentDateText. $weatherText Here is your daily quote: ${quote.text} by ${quote.author}. Have a wonderful day!"
+
+                t.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "briefing_id")
+            }
+        }
+    }
 
     DisposableEffect(context) {
         var textToSpeech: TextToSpeech? = null
         textToSpeech = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 textToSpeech?.language = Locale.US
+                textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        isSpeaking = true
+                    }
+
+                    override fun onDone(utteranceId: String?) {
+                        isSpeaking = false
+                    }
+
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String?) {
+                        isSpeaking = false
+                    }
+                })
             }
         }
         tts = textToSpeech
 
         onDispose {
-            textToSpeech?.stop()
-            textToSpeech?.shutdown()
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
+    }
+
+    LaunchedEffect(tts, weatherInfo, isWeatherLoading) {
+        if (tts != null && (!isWeatherLoading || weatherInfo != null) && !hasAutoPlayed) {
+            hasAutoPlayed = true
+            startBriefing()
         }
     }
 
@@ -114,15 +161,7 @@ fun MorningDashboardScreen(
                 t.stop()
                 isSpeaking = false
             } else {
-                val weatherText = if (weatherInfo != null)
-                    "The current weather is ${weatherInfo.conditionText} with a temperature of ${weatherInfo.temperatureCelsius} degrees Celsius."
-                else
-                    ""
-                val textToSpeak =
-                    "$greetingBase! Today is $currentDateText. $weatherText Here is your daily quote: ${quote.text} by ${quote.author}. Have a wonderful day!"
-
-                t.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "briefing_id")
-                isSpeaking = true
+                startBriefing()
             }
         }
     }
@@ -133,8 +172,9 @@ fun MorningDashboardScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                        MaterialTheme.colorScheme.background
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     )
                 )
             )
@@ -145,83 +185,103 @@ fun MorningDashboardScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Top Morning Header
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 12.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     border = BorderStroke(
-                        0.5.dp,
+                        1.dp,
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                    )
+                    ),
+                    tonalElevation = 2.dp
                 ) {
                     Text(
-                        text = currentDateText.uppercase(),
-                        fontSize = 11.sp,
+                        text = "☀️ $currentDateText".uppercase(),
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = greeting,
                     style = MaterialTheme.typography.headlineLarge.copy(
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.5).sp
                     ),
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "You're awake and ready to conquer the day.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "You're awake, mission accomplished. Let's make today extraordinary.",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Text-To-Speech Morning Briefing Action Pill
+            // Text-To-Speech Morning Briefing Action Pill with pulsing effect when speaking
+            val pulseAnim = if (isSpeaking) {
+                val infiniteTransition = rememberInfiniteTransition(label = "pulseAudio")
+                infiniteTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.04f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(600, easing = EaseInOutSine),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "scale"
+                ).value
+            } else {
+                1f
+            }
+
             OutlinedButton(
                 onClick = toggleBriefing,
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(
-                    1.dp,
+                    1.5.dp,
                     if (isSpeaking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
-                        alpha = 0.5f
+                        alpha = 0.4f
                     )
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = if (isSpeaking) MaterialTheme.colorScheme.primaryContainer.copy(
-                        alpha = 0.5f
+                        alpha = 0.7f
                     ) else MaterialTheme.colorScheme.surface
                 ),
-                modifier = Modifier.fillMaxWidth(0.9f)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .scale(pulseAnim)
             ) {
                 Icon(
                     imageVector = if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.Default.RecordVoiceOver,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = if (isSpeaking) "Stop Audio Briefing 🔇" else "Listen to Morning Briefing 🔊",
+                    text = if (isSpeaking) "Pause Morning Briefing 🔇" else "Play Voice Briefing 🎙️",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -231,14 +291,14 @@ fun MorningDashboardScreen(
             // Weather Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(22.dp)) {
                     val weatherIcon = getWeatherIcon(weatherInfo?.conditionText)
 
                     Row(
@@ -249,45 +309,59 @@ fun MorningDashboardScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                tonalElevation = 2.dp
                             ) {
                                 Icon(
                                     imageVector = weatherIcon,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
-                                        .padding(8.dp)
-                                        .size(20.dp)
+                                        .padding(10.dp)
+                                        .size(22.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Today's Forecast",
+                                text = "Weather & Atmosphere",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = "LIVE",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     if (isWeatherLoading) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 12.dp),
+                                .padding(vertical = 16.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(26.dp),
+                                strokeWidth = 3.dp,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Fetching forecast...",
+                                text = "Checking atmospheric conditions...",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -301,40 +375,47 @@ fun MorningDashboardScreen(
                             Column {
                                 Text(
                                     text = "${weatherInfo.temperatureCelsius}°C",
-                                    fontSize = 38.sp,
+                                    fontSize = 44.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
+                                    letterSpacing = (-1).sp
                                 )
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = weatherInfo.conditionText,
-                                    fontSize = 15.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
 
                             Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer
+                                shape = RoundedCornerShape(20.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                border = BorderStroke(
+                                    0.5.dp,
+                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                                )
                             ) {
                                 Column(
                                     modifier = Modifier.padding(
-                                        horizontal = 16.dp,
-                                        vertical = 12.dp
+                                        horizontal = 18.dp,
+                                        vertical = 14.dp
                                     ),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Thermostat,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier.size(24.dp)
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Live",
-                                        fontSize = 11.sp,
+                                        text = "Optimal",
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -343,34 +424,35 @@ fun MorningDashboardScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Daily Motivational Quote Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(22.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.tertiaryContainer
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            tonalElevation = 2.dp
                         ) {
                             Icon(
                                 imageVector = Icons.Default.FormatQuote,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onTertiaryContainer,
                                 modifier = Modifier
-                                    .padding(8.dp)
-                                    .size(20.dp)
+                                    .padding(10.dp)
+                                    .size(22.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "Daily Inspiration",
                             style = MaterialTheme.typography.titleMedium,
@@ -379,30 +461,37 @@ fun MorningDashboardScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
                         text = "“${quote.text}”",
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Medium
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 26.sp
                         ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    Text(
-                        text = "— ${quote.author}",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
                         modifier = Modifier.align(Alignment.End)
-                    )
+                    ) {
+                        Text(
+                            text = "— ${quote.author}",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Primary Start My Day Button
             Button(
@@ -412,17 +501,17 @@ fun MorningDashboardScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(16.dp),
+                    .height(56.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
             ) {
                 Text(
                     text = "Start My Day",
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(10.dp))
@@ -455,7 +544,7 @@ fun MorningDashboardScreenPreview() {
         MorningDashboardScreen(
             weatherInfo = WeatherInfo(
                 temperatureCelsius = 25,
-                conditionText = "Sunny",
+                conditionText = "Sunny & Clear",
             ),
             isWeatherLoading = false,
             quote = Quote(

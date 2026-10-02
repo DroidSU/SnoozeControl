@@ -17,9 +17,9 @@ object ManufacturerPermissionHelper {
     private const val KEY_AUTOSTART_DISMISSED_TIMESTAMP = "autostart_prompt_dismissed_timestamp"
 
     /**
-     * Default TTL expiry duration for autostart dismissal prompt: 3 days.
+     * Default TTL expiry duration for autostart dismissal prompt: 14 days.
      */
-    const val DEFAULT_EXPIRY_MS = 3 * 24 * 60 * 60 * 1000L
+    const val DEFAULT_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000L
 
     fun isOemDeviceRequiringAutostart(): Boolean {
         val manufacturer = Build.MANUFACTURER.lowercase()
