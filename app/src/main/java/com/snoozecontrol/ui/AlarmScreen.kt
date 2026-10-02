@@ -431,6 +431,7 @@ fun AlarmItemRow(
                     val challengeIcon = when (alarm.challengeType) {
                         ChallengeType.MATH -> Icons.Default.Calculate
                         ChallengeType.BARCODE -> Icons.Default.QrCodeScanner
+                        ChallengeType.SHAKE -> Icons.Default.NotificationsActive
                         else -> Icons.Default.NotificationsActive
                     }
                     Surface(

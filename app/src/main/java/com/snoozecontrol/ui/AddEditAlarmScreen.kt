@@ -1,11 +1,13 @@
 package com.snoozecontrol.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,19 +30,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -62,6 +66,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,6 +94,9 @@ fun AddEditAlarmScreen(
     onDaysChange: (Set<Int>) -> Unit,
     onSnoozeDurationChange: (Int) -> Unit = {},
     onBedtimeReminderToggle: (Boolean) -> Unit = {},
+    onNextStep: () -> Unit = {},
+    onPrevStep: () -> Unit = {},
+    onSetStep: (Int) -> Unit = {},
     onSave: () -> Unit,
     onBack: () -> Unit,
     onRegisterBarcodeClick: () -> Unit
@@ -98,11 +106,18 @@ fun AddEditAlarmScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        stringResource(R.string.set_alarm_title),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
+                    Column {
+                        Text(
+                            stringResource(R.string.set_alarm_title),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        )
+                        Text(
+                            text = "Step ${uiState.currentStep} of 3",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -123,25 +138,64 @@ fun AddEditAlarmScreen(
                 tonalElevation = 8.dp,
                 modifier = Modifier.navigationBarsPadding()
             ) {
-                Button(
-                    onClick = onSave,
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    enabled = uiState.isSaveEnabled,
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        stringResource(R.string.save_alarm_button),
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (uiState.currentStep > 1) {
+                        OutlinedButton(
+                            onClick = onPrevStep,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Text(
+                                "Back",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            if (uiState.currentStep < 3) {
+                                onNextStep()
+                            } else {
+                                onSave()
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(if (uiState.currentStep > 1) 1f else 2f)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        enabled = if (uiState.currentStep == 2) uiState.isStep2Valid else true,
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    ) {
+                        Text(
+                            text = if (uiState.currentStep < 3) "Continue" else "Create Alarm",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        if (uiState.currentStep < 3) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -168,165 +222,496 @@ fun AddEditAlarmScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // TIME SELECTION CARD
-                TimePickerCard(
-                    hour12 = uiState.hour12,
-                    minute = uiState.minute,
-                    isAm = uiState.isAm,
-                    onHourChange = onHourChange,
-                    onMinuteChange = onMinuteChange,
-                    onAmPmChange = onAmPmChange
-                )
+                // MODERN PROGRESS INDICATOR BAR
+                StepIndicator(currentStep = uiState.currentStep, onStepClick = onSetStep)
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // ALARM SOUND SELECTION CARD
-                SoundSelectionCard(
-                    ringtoneTitle = uiState.ringtoneTitle,
-                    onSelectRingtoneClick = onSelectRingtoneClick
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // HERO WAKE-UP MISSION / CHALLENGE SECTION
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 3.dp,
-                    border = BorderStroke(
-                        0.5.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    Text(
-                                        text = "MISSION",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(
-                                            horizontal = 10.dp,
-                                            vertical = 5.dp
-                                        )
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = stringResource(R.string.wakeup_challenge_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = stringResource(R.string.wakeup_challenge_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        ChallengeCard(
-                            title = stringResource(R.string.math_challenge_title),
-                            description = stringResource(R.string.math_challenge_desc),
-                            icon = Icons.Default.Calculate,
-                            isSelected = uiState.challengeType == ChallengeType.MATH,
-                            showOpensScreenIndicator = false,
-                            onClick = { onChallengeTypeChange(ChallengeType.MATH) }
-                        )
-
-                        if (uiState.challengeType == ChallengeType.MATH) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Difficulty:",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                MathDifficulty.entries.forEach { diff ->
-                                    FilterChip(
-                                        selected = uiState.mathDifficulty == diff,
-                                        onClick = { onMathDifficultyChange(diff) },
-                                        label = { Text(diff.displayName, fontSize = 12.sp) },
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        ChallengeCard(
-                            title = stringResource(R.string.barcode_challenge_title),
-                            description = if (uiState.targetBarcode != null)
-                                "Scan registered barcode to dismiss alarm."
-                            else
-                                stringResource(R.string.barcode_challenge_desc),
-                            icon = Icons.Default.QrCodeScanner,
-                            isSelected = uiState.challengeType == ChallengeType.BARCODE,
-                            showOpensScreenIndicator = true,
-                            registeredBarcode = uiState.targetBarcode,
-                            onRescanClick = onRegisterBarcodeClick,
-                            onClick = {
-                                onChallengeTypeChange(ChallengeType.BARCODE)
-                                if (uiState.targetBarcode == null) {
-                                    onRegisterBarcodeClick()
-                                }
-                            }
-                        )
-                    }
+                // CONTEXTUAL SUMMARY BAR (Steps 2 & 3)
+                if (uiState.currentStep > 1) {
+                    ContextualSummaryBar(uiState = uiState)
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                // STEP CONTENT WIZARD
+                when (uiState.currentStep) {
+                    1 -> StepOneTime(
+                        hour12 = uiState.hour12,
+                        minute = uiState.minute,
+                        isAm = uiState.isAm,
+                        onHourChange = onHourChange,
+                        onMinuteChange = onMinuteChange,
+                        onAmPmChange = onAmPmChange
+                    )
 
-                // SNOOZE SETTINGS SECTION
-                SnoozeSettingsCard(
-                    snoozeDurationMinutes = uiState.snoozeDurationMinutes,
-                    onSnoozeDurationChange = onSnoozeDurationChange
-                )
+                    2 -> StepTwoWakeMethod(
+                        challengeType = uiState.challengeType,
+                        mathDifficulty = uiState.mathDifficulty,
+                        targetBarcode = uiState.targetBarcode,
+                        onChallengeTypeChange = onChallengeTypeChange,
+                        onMathDifficultyChange = onMathDifficultyChange,
+                        onRegisterBarcodeClick = onRegisterBarcodeClick
+                    )
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // BEDTIME REMINDER SECTION
-                BedtimeReminderCard(
-                    isEnabled = uiState.isBedtimeReminderEnabled,
-                    onToggle = onBedtimeReminderToggle
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // REPEAT SCHEDULE SECTION
-                RepeatScheduleCard(
-                    selectedDays = uiState.selectedDays,
-                    onDaysChange = onDaysChange
-                )
+                    3 -> StepThreeSchedule(
+                        ringtoneTitle = uiState.ringtoneTitle,
+                        onSelectRingtoneClick = onSelectRingtoneClick,
+                        snoozeDurationMinutes = uiState.snoozeDurationMinutes,
+                        onSnoozeDurationChange = onSnoozeDurationChange,
+                        isBedtimeReminderEnabled = uiState.isBedtimeReminderEnabled,
+                        onBedtimeReminderToggle = onBedtimeReminderToggle,
+                        selectedDays = uiState.selectedDays,
+                        onDaysChange = onDaysChange
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+}
+
+// MODERN STEP INDICATOR BAR
+@Composable
+fun StepIndicator(currentStep: Int, onStepClick: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val stepNames = listOf("Time", "Wake Method", "Schedule")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            stepNames.forEachIndexed { index, name ->
+                val stepNum = index + 1
+                val isSelected = currentStep == stepNum
+                val isDone = currentStep > stepNum
+
+                Text(
+                    text = name,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    color = when {
+                        isSelected -> MaterialTheme.colorScheme.primary
+                        isDone -> MaterialTheme.colorScheme.onSurface
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    },
+                    modifier = Modifier.clickable {
+                        if (stepNum < currentStep) onStepClick(stepNum)
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 3-Segment Progress Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            (1..3).forEach { stepNum ->
+                val isCompleted = currentStep >= stepNum
+                val barColor by animateColorAsState(
+                    if (isCompleted) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                    label = "barColor"
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(CircleShape)
+                        .background(barColor)
+                        .clickable {
+                            if (stepNum < currentStep) onStepClick(stepNum)
+                        }
+                )
+            }
+        }
+    }
+}
+
+// CONTEXTUAL SUMMARY BAR
+@Composable
+fun ContextualSummaryBar(uiState: AddEditAlarmUiState) {
+    val locale = remember { Locale.getDefault() }
+    val timeStr = remember(uiState.hour12, uiState.minute, uiState.isAm) {
+        String.format(
+            locale,
+            "%02d:%02d %s",
+            uiState.hour12,
+            uiState.minute,
+            if (uiState.isAm) "AM" else "PM"
+        )
+    }
+    val challengeStr = when (uiState.challengeType) {
+        ChallengeType.MATH -> "Math (${uiState.mathDifficulty.displayName})"
+        ChallengeType.BARCODE -> "Barcode"
+        ChallengeType.SHAKE -> "Shake"
+        else -> "None"
+    }
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+    ) {
+        Text(
+            text = "$timeStr · $challengeStr",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 16.dp)
+        )
+    }
+}
+
+// ==========================================
+// STEP 1 — CHOOSE THE TIME
+// ==========================================
+@Composable
+fun StepOneTime(
+    hour12: Int,
+    minute: Int,
+    isAm: Boolean,
+    onHourChange: (Int) -> Unit,
+    onMinuteChange: (Int) -> Unit,
+    onAmPmChange: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "When should we wake you?",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        TimePickerCard(
+            hour12 = hour12,
+            minute = minute,
+            isAm = isAm,
+            onHourChange = onHourChange,
+            onMinuteChange = onMinuteChange,
+            onAmPmChange = onAmPmChange
+        )
+    }
+}
+
+// ==========================================
+// STEP 2 — CHOOSE HOW TO WAKE UP
+// ==========================================
+@Composable
+fun StepTwoWakeMethod(
+    challengeType: ChallengeType,
+    mathDifficulty: MathDifficulty,
+    targetBarcode: String?,
+    onChallengeTypeChange: (ChallengeType) -> Unit,
+    onMathDifficultyChange: (MathDifficulty) -> Unit,
+    onRegisterBarcodeClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "How do you want to wake up?",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 1. Math Genius Option
+        SelectableChallengeCard(
+            title = stringResource(R.string.math_challenge_title),
+            description = stringResource(R.string.math_challenge_desc),
+            icon = Icons.Default.Calculate,
+            isSelected = challengeType == ChallengeType.MATH,
+            onClick = { onChallengeTypeChange(ChallengeType.MATH) }
+        ) {
+            AnimatedVisibility(
+                visible = challengeType == ChallengeType.MATH,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    Text(
+                        text = "Difficulty",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            MathDifficulty.entries.forEach { diff ->
+                                val isDiffSelected = mathDifficulty == diff
+                                val bg by animateColorAsState(
+                                    if (isDiffSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    label = "diffBg"
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(bg)
+                                        .clickable { onMathDifficultyChange(diff) }
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = diff.displayName,
+                                        fontWeight = if (isDiffSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        textAlign = TextAlign.Center,
+                                        color = if (isDiffSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. Barcode Scan Option
+        SelectableChallengeCard(
+            title = stringResource(R.string.barcode_challenge_title),
+            description = if (targetBarcode != null) "Barcode registered successfully!" else stringResource(
+                R.string.barcode_challenge_desc
+            ),
+            icon = Icons.Default.QrCodeScanner,
+            isSelected = challengeType == ChallengeType.BARCODE,
+            onClick = { onChallengeTypeChange(ChallengeType.BARCODE) }
+        ) {
+            AnimatedVisibility(
+                visible = challengeType == ChallengeType.BARCODE,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    Button(
+                        onClick = onRegisterBarcodeClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (targetBarcode != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primary,
+                            contentColor = if (targetBarcode != null) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text(
+                            text = if (targetBarcode != null) "Rescan / Change Barcode" else "Set up barcode",
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. Shake Phone Option
+        SelectableChallengeCard(
+            title = "Shake Phone",
+            description = "Shake to dismiss the alarm",
+            icon = Icons.Default.Vibration,
+            isSelected = challengeType == ChallengeType.SHAKE,
+            onClick = { onChallengeTypeChange(ChallengeType.SHAKE) }
+        ) {
+            AnimatedVisibility(
+                visible = challengeType == ChallengeType.SHAKE,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Text(
+                    text = "Shake your phone vigorously to dismiss the alarm when it rings.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SelectableChallengeCard(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    content: @Composable (() -> Unit)? = null
+) {
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
+            alpha = 0.2f
+        ),
+        label = "borderColor"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surface,
+        label = "containerColor"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp),
+        border = BorderStroke(if (isSelected) 2.dp else 0.5.dp, borderColor)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 2.dp
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (isSelected) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            if (content != null) {
+                content()
+            }
+        }
+    }
+}
+
+// ==========================================
+// STEP 3 — SNOOZE + REPEAT + SOUND
+// ==========================================
+@Composable
+fun StepThreeSchedule(
+    ringtoneTitle: String,
+    onSelectRingtoneClick: () -> Unit,
+    snoozeDurationMinutes: Int,
+    onSnoozeDurationChange: (Int) -> Unit,
+    isBedtimeReminderEnabled: Boolean,
+    onBedtimeReminderToggle: (Boolean) -> Unit,
+    selectedDays: Set<Int>,
+    onDaysChange: (Set<Int>) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "How should this alarm repeat?",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 1. REPEAT SCHEDULE CARD
+        RepeatScheduleCard(selectedDays = selectedDays, onDaysChange = onDaysChange)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. SNOOZE SETTINGS CARD
+        SnoozeSettingsCard(
+            snoozeDurationMinutes = snoozeDurationMinutes,
+            onSnoozeDurationChange = onSnoozeDurationChange
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. SOUND SELECTION CARD
+        SoundSelectionCard(
+            ringtoneTitle = ringtoneTitle,
+            onSelectRingtoneClick = onSelectRingtoneClick
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 4. BEDTIME REMINDER CARD
+        BedtimeReminderCard(
+            isEnabled = isBedtimeReminderEnabled,
+            onToggle = onBedtimeReminderToggle
+        )
     }
 }
 
@@ -341,7 +726,7 @@ fun SoundSelectionCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
         onClick = onSelectRingtoneClick
     ) {
@@ -502,6 +887,7 @@ fun AmPmSegmentedControl(
                     text = "AM",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
                     color = if (isAm) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -519,6 +905,7 @@ fun AmPmSegmentedControl(
                     text = "PM",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
                     color = if (!isAm) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -675,13 +1062,12 @@ fun WheelColumn(
     }
 }
 
-// REPEAT SCHEDULE CARD COMPONENT
+// REPEAT SCHEDULE CARD COMPONENT (REDESIGNED & DECLUTTERED)
 @Composable
 fun RepeatScheduleCard(
     selectedDays: Set<Int>,
     onDaysChange: (Set<Int>) -> Unit
 ) {
-    val isOnce = selectedDays.isEmpty()
     val isDaily = selectedDays.size == 7
     val isWeekdays = selectedDays == setOf(1, 2, 3, 4, 5)
     val isWeekends = selectedDays == setOf(6, 7)
@@ -702,7 +1088,7 @@ fun RepeatScheduleCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -712,6 +1098,7 @@ fun RepeatScheduleCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = summaryText,
                 style = MaterialTheme.typography.bodySmall,
@@ -720,77 +1107,71 @@ fun RepeatScheduleCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Horizontally Scrollable Preset Chips
-            Row(
+            // Preset Segmented Selector Pill (3 Presets: Daily, Weekdays, Weekends)
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .height(44.dp)
             ) {
-                FilterChip(
-                    selected = isOnce,
-                    onClick = { onDaysChange(emptySet()) },
-                    label = { Text("Once", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                Row(
+                    modifier = Modifier.padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val presets = listOf(
+                        "Daily" to setOf(1, 2, 3, 4, 5, 6, 7),
+                        "Weekdays" to setOf(1, 2, 3, 4, 5),
+                        "Weekends" to setOf(6, 7)
                     )
-                )
 
-                FilterChip(
-                    selected = isDaily,
-                    onClick = { onDaysChange(setOf(1, 2, 3, 4, 5, 6, 7)) },
-                    label = { Text("Daily", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
+                    presets.forEach { (label, days) ->
+                        val isPresetSelected = when (label) {
+                            "Daily" -> isDaily
+                            "Weekdays" -> isWeekdays
+                            "Weekends" -> isWeekends
+                            else -> false
+                        }
 
-                FilterChip(
-                    selected = isWeekdays,
-                    onClick = { onDaysChange(setOf(1, 2, 3, 4, 5)) },
-                    label = {
-                        Text(
-                            "Weekdays",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                        val bg by animateColorAsState(
+                            if (isPresetSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            label = "presetBg"
                         )
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
 
-                FilterChip(
-                    selected = isWeekends,
-                    onClick = { onDaysChange(setOf(6, 7)) },
-                    label = {
-                        Text(
-                            "Weekends",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(bg)
+                                .clickable {
+                                    if (isPresetSelected) {
+                                        onDaysChange(emptySet())
+                                    } else {
+                                        onDaysChange(days)
+                                    }
+                                }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                fontWeight = if (isPresetSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center,
+                                color = if (isPresetSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Days of Week Pills: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
+            // Clean 7-Day Pills (Equal Weight, Centered Text)
             val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 dayLabels.forEachIndexed { index, label ->
                     val dayNum = index + 1
@@ -798,14 +1179,15 @@ fun RepeatScheduleCard(
 
                     val bg by animateColorAsState(
                         if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant,
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                         label = "dayBg"
                     )
 
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
+                            .weight(1f)
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(bg)
                             .clickable {
                                 val newDays = if (isSelected) {
@@ -820,11 +1202,12 @@ fun RepeatScheduleCard(
                         Text(
                             text = label,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
+                            textAlign = TextAlign.Center,
                             color = if (isSelected)
                                 MaterialTheme.colorScheme.onPrimary
                             else
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -833,7 +1216,7 @@ fun RepeatScheduleCard(
     }
 }
 
-// SNOOZE SETTINGS CARD COMPONENT
+// SNOOZE SETTINGS CARD COMPONENT (3-SEGMENT PILL: 5m, 10m, 15m)
 @Composable
 fun SnoozeSettingsCard(
     snoozeDurationMinutes: Int,
@@ -845,7 +1228,7 @@ fun SnoozeSettingsCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -855,7 +1238,7 @@ fun SnoozeSettingsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Snooze Settings",
+                    text = "Snooze Duration",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -873,38 +1256,52 @@ fun SnoozeSettingsCard(
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Select snooze duration interval",
+                text = "Select snooze interval",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val durations = listOf(5, 10, 15)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            // 3-Segment Pill Container (5 min, 10 min, 15 min)
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
             ) {
-                durations.forEach { duration ->
-                    val isSelected = snoozeDurationMinutes == duration
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onSnoozeDurationChange(duration) },
-                        label = {
+                Row(
+                    modifier = Modifier.padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val durations = listOf(5, 10, 15)
+                    durations.forEach { duration ->
+                        val isSelected = snoozeDurationMinutes == duration
+                        val bg by animateColorAsState(
+                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                            label = "snoozeBg"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(bg)
+                                .clickable { onSnoozeDurationChange(duration) }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                "$duration min",
+                                text = "$duration min",
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
+                                textAlign = TextAlign.Center,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
+                        }
+                    }
                 }
             }
         }
@@ -923,7 +1320,7 @@ fun BedtimeReminderCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
     ) {
         Row(
@@ -942,7 +1339,7 @@ fun BedtimeReminderCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Remind me 8 hours before alarm time to wind down for sleep.",
+                    text = "Remind me 8 hours before alarm time.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -966,6 +1363,7 @@ fun AddEditAlarmScreenPreview() {
     SnoozeControlTheme {
         AddEditAlarmScreen(
             uiState = AddEditAlarmUiState(
+                currentStep = 3,
                 hour12 = 7,
                 minute = 30,
                 isAm = true,
@@ -978,6 +1376,8 @@ fun AddEditAlarmScreenPreview() {
             onChallengeTypeChange = {},
             onDaysChange = {},
             onSnoozeDurationChange = {},
+            onNextStep = {},
+            onPrevStep = {},
             onSave = {},
             onBack = {},
             onRegisterBarcodeClick = {}

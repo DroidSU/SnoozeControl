@@ -21,6 +21,7 @@ import javax.inject.Inject
 
 data class AddEditAlarmUiState(
     val alarmId: Int = -1,
+    val currentStep: Int = 1,
     val hour12: Int = 7,
     val minute: Int = 0,
     val isAm: Boolean = true,
@@ -39,6 +40,9 @@ data class AddEditAlarmUiState(
 
     val repeatDaysString: String
         get() = selectedDays.sorted().joinToString(",")
+
+    val isStep2Valid: Boolean
+        get() = challengeType != ChallengeType.BARCODE || targetBarcode != null
 
     val isSaveEnabled: Boolean
         get() = challengeType != ChallengeType.BARCODE || targetBarcode != null
@@ -70,6 +74,7 @@ class AddEditAlarmViewModel @Inject constructor(
 
             _uiState.value = AddEditAlarmUiState(
                 alarmId = alarm.id,
+                currentStep = 1,
                 hour12 = hour12,
                 minute = alarm.minute,
                 isAm = isAm,
@@ -93,6 +98,7 @@ class AddEditAlarmViewModel @Inject constructor(
 
             _uiState.value = AddEditAlarmUiState(
                 alarmId = -1,
+                currentStep = 1,
                 hour12 = h12,
                 minute = min,
                 isAm = isAm,
@@ -104,6 +110,26 @@ class AddEditAlarmViewModel @Inject constructor(
                 isBedtimeReminderEnabled = true,
                 isLoaded = true
             )
+        }
+    }
+
+    fun setStep(step: Int) {
+        if (step in 1..3) {
+            _uiState.update { it.copy(currentStep = step) }
+        }
+    }
+
+    fun nextStep() {
+        val current = _uiState.value.currentStep
+        if (current < 3) {
+            _uiState.update { it.copy(currentStep = current + 1) }
+        }
+    }
+
+    fun prevStep() {
+        val current = _uiState.value.currentStep
+        if (current > 1) {
+            _uiState.update { it.copy(currentStep = current - 1) }
         }
     }
 

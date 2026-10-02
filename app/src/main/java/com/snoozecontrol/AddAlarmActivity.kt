@@ -165,6 +165,9 @@ class AddAlarmActivity : ComponentActivity() {
                                 onDaysChange = viewModel::onDaysChange,
                                 onSnoozeDurationChange = viewModel::onSnoozeDurationChange,
                                 onBedtimeReminderToggle = viewModel::onBedtimeReminderToggle,
+                                onNextStep = viewModel::nextStep,
+                                onPrevStep = viewModel::prevStep,
+                                onSetStep = viewModel::setStep,
                                 onSave = {
                                     if (!PermissionManager.hasNotificationPermission(this@AddAlarmActivity)) {
                                         PermissionManager.getNotificationPermission()?.let { perm ->
@@ -181,8 +184,12 @@ class AddAlarmActivity : ComponentActivity() {
                                     }
                                 },
                                 onBack = {
-                                    setResult(RESULT_CANCELED)
-                                    finish()
+                                    if (uiState.currentStep > 1) {
+                                        viewModel.prevStep()
+                                    } else {
+                                        setResult(RESULT_CANCELED)
+                                        finish()
+                                    }
                                 },
                                 onRegisterBarcodeClick = {
                                     if (!PermissionManager.hasCameraPermission(this@AddAlarmActivity)) {

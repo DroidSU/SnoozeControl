@@ -15,9 +15,11 @@ object ManufacturerPermissionHelper {
     private const val PREFS_NAME = "snooze_control_oem_prefs"
     private const val KEY_AUTOSTART_DISMISSED = "autostart_prompt_dismissed"
     private const val KEY_AUTOSTART_DISMISSED_TIMESTAMP = "autostart_prompt_dismissed_timestamp"
+    private const val KEY_BATTERY_OPT_LAST_PROMPTED_TIMESTAMP =
+        "battery_opt_last_prompted_timestamp"
 
     /**
-     * Default TTL expiry duration for autostart dismissal prompt: 14 days.
+     * Default TTL expiry duration for prompts (14 days).
      */
     const val DEFAULT_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000L
 
@@ -46,9 +48,39 @@ object ManufacturerPermissionHelper {
     }
 
     /**
+     * Checks whether we should prompt the user for battery optimization exemption.
+     * Returns true on initial install/first run OR if 14 days ([checkIntervalMs]) have passed since last prompt.
+     */
+    fun shouldPromptBatteryOptimization(
+        context: Context,
+        checkIntervalMs: Long = DEFAULT_EXPIRY_MS
+    ): Boolean {
+        if (isIgnoringBatteryOptimizations(context)) return false
+
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastPrompted = prefs.getLong(KEY_BATTERY_OPT_LAST_PROMPTED_TIMESTAMP, 0L)
+        if (lastPrompted == 0L) return true
+
+        val now = System.currentTimeMillis()
+        return (now - lastPrompted) >= checkIntervalMs
+    }
+
+    /**
+     * Records that the battery optimization prompt was shown at the current timestamp.
+     */
+    fun recordBatteryOptimizationPrompted(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        prefs.edit {
+            putLong(KEY_BATTERY_OPT_LAST_PROMPTED_TIMESTAMP, now)
+        }
+    }
+
+    /**
      * Shows the direct system popup dialog asking the user to allow the app to run in the background without battery restrictions.
      */
     fun requestIgnoreBatteryOptimizations(context: Context) {
+        recordBatteryOptimizationPrompted(context)
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
             try {

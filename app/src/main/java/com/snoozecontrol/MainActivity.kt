@@ -205,7 +205,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkAndRequestBackgroundExecutionPermissions() {
-        if (!ManufacturerPermissionHelper.isIgnoringBatteryOptimizations(this)) {
+        if (ManufacturerPermissionHelper.shouldPromptBatteryOptimization(this)) {
             ManufacturerPermissionHelper.requestIgnoreBatteryOptimizations(this)
         } else if (ManufacturerPermissionHelper.isOemDeviceRequiringAutostart() &&
             !ManufacturerPermissionHelper.hasUserDismissedAutostartPrompt(this)

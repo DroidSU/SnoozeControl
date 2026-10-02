@@ -4,11 +4,8 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.snoozecontrol.R
 import com.snoozecontrol.data.AlarmDao
 import com.snoozecontrol.model.AlarmItem
-import com.snoozecontrol.model.ChallengeType
-import com.snoozecontrol.model.DismissState
 import com.snoozecontrol.scheduler.AlarmScheduler
 import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import com.snoozecontrol.util.WeatherInfo
@@ -21,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
@@ -85,53 +81,6 @@ class AlarmViewModel @Inject constructor(
 
     private var recentlyDeletedAlarm: AlarmItem? = null
 
-    fun addAlarm(
-        context: Context,
-        hour: Int,
-        minute: Int,
-        challengeType: ChallengeType = ChallengeType.MATH,
-        targetBarcode: String? = null,
-        repeatDays: String = ""
-    ) {
-        viewModelScope.launch {
-            val newAlarm = AlarmItem(
-                hour = hour,
-                minute = minute,
-                isEnabled = true,
-                challengeType = challengeType,
-                targetBarcode = targetBarcode,
-                repeatDays = repeatDays
-            )
-            val id = alarmDao.insertAlarm(newAlarm)
-            scheduler.schedule(newAlarm.copy(id = id.toInt()))
-        }
-    }
-
-    fun updateAlarmTime(
-        context: Context,
-        alarmId: Int,
-        hour: Int,
-        minute: Int,
-        challengeType: ChallengeType,
-        targetBarcode: String?,
-        repeatDays: String = ""
-    ) {
-        viewModelScope.launch {
-            val alarm = alarmDao.getAlarmById(alarmId) ?: return@launch
-            val updatedAlarm = alarm.copy(
-                hour = hour,
-                minute = minute,
-                challengeType = challengeType,
-                targetBarcode = targetBarcode,
-                repeatDays = repeatDays
-            )
-            alarmDao.updateAlarm(updatedAlarm)
-            if (updatedAlarm.isEnabled) {
-                scheduler.schedule(updatedAlarm)
-            }
-        }
-    }
-
     fun toggleAlarm(context: Context, alarmId: Int) {
         viewModelScope.launch {
             val alarm = alarms.value.find { it.id == alarmId } ?: return@launch
@@ -163,100 +112,6 @@ class AlarmViewModel @Inject constructor(
                     scheduler.schedule(restoredAlarm)
                 }
                 recentlyDeletedAlarm = null
-            }
-        }
-    }
-
-    private val _dismissState = MutableStateFlow(DismissState())
-    val dismissState: StateFlow<DismissState> = _dismissState.asStateFlow()
-
-    fun triggerAlarm(alarmId: Int) {
-        if (_dismissState.value.challengeType != ChallengeType.NONE) return
-
-        viewModelScope.launch {
-            val alarm = alarmDao.getAlarmById(alarmId)
-            if (alarm != null) {
-                when (alarm.challengeType) {
-                    ChallengeType.MATH -> generateNewMathProblem()
-                    ChallengeType.BARCODE -> {
-                        _dismissState.update {
-                            it.copy(
-                                challengeType = ChallengeType.BARCODE,
-                                targetBarcode = alarm.targetBarcode,
-                                isScanning = true
-                            )
-                        }
-                    }
-                    ChallengeType.NONE -> {
-                        _dismissState.update {
-                            it.copy(challengeType = ChallengeType.NONE)
-                        }
-                    }
-                }
-            } else {
-                generateNewMathProblem()
-            }
-        }
-    }
-
-    fun generateNewMathProblem() {
-        val num1 = (1..20).random()
-        val num2 = (1..20).random()
-        val operator = listOf("+", "-", "*").random()
-
-        val (equation, answer) = when (operator) {
-            "+" -> "$num1 + $num2" to (num1 + num2)
-            "-" -> "$num1 - $num2" to (num1 - num2)
-            "*" -> "$num1 * $num2" to (num1 * num2)
-            else -> "$num1 + $num2" to (num1 + num2)
-        }
-
-        _dismissState.value = DismissState(
-            challengeType = ChallengeType.MATH,
-            equation = equation,
-            correctAnswer = answer
-        )
-    }
-
-    fun onBarcodeScanned(value: String, onSuccess: () -> Unit) {
-        val currentState = _dismissState.value
-        if (currentState.challengeType == ChallengeType.BARCODE) {
-            val scannedClean = value.trim()
-            val targetClean = currentState.targetBarcode?.trim().orEmpty()
-
-            if (scannedClean.isNotEmpty() && scannedClean == targetClean) {
-                onSuccess()
-                _dismissState.value = DismissState()
-            } else {
-                _dismissState.update {
-                    it.copy(
-                        error = getApplication<Application>().getString(
-                            R.string.error_wrong_barcode,
-                            scannedClean
-                        )
-                    )
-                }
-            }
-        }
-    }
-
-    fun onAnswerChange(newInput: String) {
-        _dismissState.update { it.copy(input = newInput, error = null) }
-    }
-
-    fun checkAnswer(onSuccess: () -> Unit) {
-        val currentState = _dismissState.value
-        val userTypedAnswer = currentState.input.toIntOrNull()
-
-        if (userTypedAnswer == currentState.correctAnswer) {
-            onSuccess()
-            _dismissState.value = DismissState()
-        } else {
-            _dismissState.update {
-                it.copy(
-                    error = getApplication<Application>().getString(R.string.error_incorrect_answer),
-                    input = ""
-                )
             }
         }
     }

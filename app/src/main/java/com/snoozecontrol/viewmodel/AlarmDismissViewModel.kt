@@ -105,11 +105,11 @@ class AlarmDismissViewModel @Inject constructor(
                         }
                     }
 
-                    ChallengeType.NONE -> {
+                    ChallengeType.SHAKE, ChallengeType.NONE -> {
                         _uiState.update {
                             it.copy(
                                 alarmId = alarmId,
-                                challengeType = ChallengeType.NONE,
+                                challengeType = alarm.challengeType,
                                 snoozeDurationMinutes = snoozeDur,
                                 maxSnoozeCount = maxSnooze,
                                 snoozeCount = currentSnooze
@@ -186,21 +186,27 @@ class AlarmDismissViewModel @Inject constructor(
         _uiState.update { it.copy(answerInput = newInput, errorMessage = null) }
     }
 
-    fun checkMathAnswer(onSuccess: () -> Unit) {
+    fun onDismissClick(onSuccess: () -> Unit = {}) {
         val currentState = _uiState.value
-        val userTypedAnswer = currentState.answerInput.trim().toIntOrNull()
+        when (currentState.challengeType) {
+            ChallengeType.NONE, ChallengeType.SHAKE -> {
+                resetSnoozeCountAndDismiss(currentState.alarmId)
+                onSuccess()
+            }
 
-        if (userTypedAnswer == currentState.correctAnswer) {
-            resetSnoozeCountAndDismiss(currentState.alarmId)
-            onSuccess()
-        } else {
-            _uiState.update {
-                it.copy(
-                    errorMessage = getApplication<Application>().getString(R.string.error_incorrect_answer),
-                    answerInput = ""
-                )
+            ChallengeType.MATH -> checkMathAnswer(onSuccess)
+            ChallengeType.BARCODE -> {
+                _uiState.update {
+                    it.copy(
+                        errorMessage = getApplication<Application>().getString(R.string.scan_barcode_instruction)
+                    )
+                }
             }
         }
+    }
+
+    fun checkMathAnswer(onSuccess: () -> Unit) {
+        onDismissClick(onSuccess)
     }
 
     fun onBarcodeScanned(scannedBarcode: String, onSuccess: () -> Unit) {
