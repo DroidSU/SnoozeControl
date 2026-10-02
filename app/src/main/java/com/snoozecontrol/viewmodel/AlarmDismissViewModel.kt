@@ -38,6 +38,7 @@ data class AlarmDismissUiState(
     val isSnoozed: Boolean = false,
     val showMorningDashboard: Boolean = false,
     val isWeatherLoading: Boolean = false,
+    val userName: String = "Sujoy",
     val quote: Quote = QuoteProvider.getTodayQuote()
 ) {
     val canSnooze: Boolean

@@ -61,6 +61,7 @@ class AlarmDismissActivity : ComponentActivity() {
                             weatherInfo = weatherInfo,
                             isWeatherLoading = uiState.isWeatherLoading,
                             quote = uiState.quote,
+                            userName = uiState.userName,
                             onStartDayClick = { finish() }
                         )
                     } else {
