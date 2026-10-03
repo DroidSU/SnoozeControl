@@ -285,8 +285,7 @@ fun ThreeDotsStepIndicator(currentStep: Int) {
             val dotColor by animateColorAsState(
                 targetValue = when {
                     isActive -> MaterialTheme.colorScheme.primary
-                    isPassed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                    else -> MaterialTheme.colorScheme.surfaceVariant
+                    else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 },
                 label = "dotColor"
             )
@@ -319,7 +318,7 @@ fun StepOneTime(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "When should we wake you?",
+            text = "Alarm Time",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -356,7 +355,7 @@ fun StepTwoWakeMethod(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "How do you want to wake up?",
+            text = "Wake-Up Challenge",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -517,7 +516,7 @@ fun SelectableChallengeCard(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp),
-        border = BorderStroke(if (isSelected) 2.dp else 0.5.dp, borderColor)
+        border = BorderStroke(if (isSelected) 2.dp else 0.5.dp, borderColor),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -604,7 +603,7 @@ fun StepThreeSchedule(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "How should this alarm repeat?",
+            text = "Schedule & Repeat",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -1290,7 +1289,7 @@ fun AddEditAlarmScreenPreview() {
     SnoozeControlTheme {
         AddEditAlarmScreen(
             uiState = AddEditAlarmUiState(
-                currentStep = 3,
+                currentStep = 2,
                 hour12 = 7,
                 minute = 30,
                 isAm = true,
