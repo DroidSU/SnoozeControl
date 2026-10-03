@@ -38,6 +38,8 @@
     <!-- AlarmViewModel -->
     <string name="error_wrong_barcode">Wrong barcode! Scanned: %1$s</string>
     <string name="error_incorrect_answer">Incorrect answer, try again!</string>
+    <string name="shake_instruction_error">Keep shaking your phone to fill the liquid tank!</string>
+    <string name="shake_progress_format">%1$d / %2$d Shakes</string>
 
     <!-- AlarmService -->
     <string name="notification_dismiss_text">Solve the challenge to dismiss the alarm.</string>

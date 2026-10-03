@@ -3,6 +3,8 @@ package com.snoozecontrol
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -22,6 +24,7 @@ import com.snoozecontrol.service.AlarmService
 import com.snoozecontrol.ui.AlarmDismissScreen
 import com.snoozecontrol.ui.MorningDashboardScreen
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.util.ShakeDetector
 import com.snoozecontrol.viewmodel.AlarmDismissViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -29,11 +32,19 @@ import dagger.hilt.android.AndroidEntryPoint
 class AlarmDismissActivity : ComponentActivity() {
     private val viewModel: AlarmDismissViewModel by viewModels()
 
+    private var sensorManager: SensorManager? = null
+    private var shakeDetector: ShakeDetector? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setupLockScreenFlags()
         enableEdgeToEdge()
+
+        sensorManager = getSystemService(SENSOR_SERVICE) as? SensorManager
+        shakeDetector = ShakeDetector {
+            viewModel.onPhoneShaken()
+        }
 
         val alarmId = intent.getIntExtra(EXTRA_ALARM_ID, -1)
         viewModel.loadDismissChallenge(alarmId)
@@ -74,13 +85,15 @@ class AlarmDismissActivity : ComponentActivity() {
                             canSnooze = uiState.canSnooze,
                             snoozeDurationMinutes = uiState.snoozeDurationMinutes,
                             remainingSnoozes = uiState.remainingSnoozes,
+                            shakeProgress = uiState.shakeProgress,
+                            currentShakes = uiState.currentShakes,
+                            requiredShakes = uiState.requiredShakes,
                             onAnswerChange = viewModel::onAnswerChange,
                             onBarcodeScanned = { scannedBarcode ->
                                 viewModel.onBarcodeScanned(scannedBarcode) {}
                             },
                             onDismissClick = {
-                                viewModel.checkMathAnswer {
-                                }
+                                viewModel.onDismissClick()
                             },
                             onSnoozeClick = {
                                 viewModel.snoozeAlarm(this@AlarmDismissActivity) {}
@@ -90,6 +103,23 @@ class AlarmDismissActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        if (accelerometer != null && shakeDetector != null) {
+            sensorManager?.registerListener(
+                shakeDetector,
+                accelerometer,
+                SensorManager.SENSOR_DELAY_GAME
+            )
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        shakeDetector?.let { sensorManager?.unregisterListener(it) }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -143,7 +173,7 @@ class AlarmDismissActivity : ComponentActivity() {
 
         fun createIntent(context: Context, alarmId: Int): Intent {
             return Intent(context, AlarmDismissActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 putExtra(EXTRA_ALARM_ID, alarmId)
             }
         }

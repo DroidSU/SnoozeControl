@@ -39,7 +39,10 @@ data class AlarmDismissUiState(
     val showMorningDashboard: Boolean = false,
     val isWeatherLoading: Boolean = false,
     val userName: String = "Sujoy",
-    val quote: Quote = QuoteProvider.getTodayQuote()
+    val quote: Quote = QuoteProvider.getTodayQuote(),
+    val shakeProgress: Float = 0f,
+    val currentShakes: Int = 0,
+    val requiredShakes: Int = 25
 ) {
     val canSnooze: Boolean
         get() = snoozeCount < maxSnoozeCount && maxSnoozeCount > 0
@@ -189,9 +192,22 @@ class AlarmDismissViewModel @Inject constructor(
     fun onDismissClick(onSuccess: () -> Unit = {}) {
         val currentState = _uiState.value
         when (currentState.challengeType) {
-            ChallengeType.NONE, ChallengeType.SHAKE -> {
+            ChallengeType.NONE -> {
                 resetSnoozeCountAndDismiss(currentState.alarmId)
                 onSuccess()
+            }
+
+            ChallengeType.SHAKE -> {
+                if (currentState.shakeProgress >= 1f) {
+                    resetSnoozeCountAndDismiss(currentState.alarmId)
+                    onSuccess()
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = getApplication<Application>().getString(R.string.shake_instruction_error)
+                        )
+                    }
+                }
             }
 
             ChallengeType.MATH -> checkMathAnswer(onSuccess)
@@ -205,8 +221,44 @@ class AlarmDismissViewModel @Inject constructor(
         }
     }
 
-    fun checkMathAnswer(onSuccess: () -> Unit) {
-        onDismissClick(onSuccess)
+    fun onPhoneShaken(onSuccess: () -> Unit = {}) {
+        val currentState = _uiState.value
+        if (currentState.isDismissed || currentState.challengeType != ChallengeType.SHAKE) return
+
+        val newShakes = currentState.currentShakes + 1
+        val newProgress = (newShakes / currentState.requiredShakes.toFloat()).coerceIn(0f, 1f)
+
+        _uiState.update {
+            it.copy(
+                currentShakes = newShakes,
+                shakeProgress = newProgress,
+                errorMessage = null
+            )
+        }
+
+        if (newProgress >= 1f) {
+            resetSnoozeCountAndDismiss(currentState.alarmId)
+            onSuccess()
+        }
+    }
+
+    fun checkMathAnswer(onSuccess: () -> Unit = {}) {
+        val currentState = _uiState.value
+        if (currentState.challengeType == ChallengeType.MATH) {
+            val userEntered = currentState.answerInput.trim().toIntOrNull()
+            if (userEntered != null && userEntered == currentState.correctAnswer) {
+                resetSnoozeCountAndDismiss(currentState.alarmId)
+                onSuccess()
+            } else {
+                _uiState.update {
+                    it.copy(
+                        errorMessage = getApplication<Application>().getString(R.string.error_incorrect_answer)
+                    )
+                }
+            }
+        } else {
+            onDismissClick(onSuccess)
+        }
     }
 
     fun onBarcodeScanned(scannedBarcode: String, onSuccess: () -> Unit) {
@@ -255,12 +307,17 @@ class AlarmDismissViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isDismissed = true,
-                    showMorningDashboard = true,
+                    showMorningDashboard = false,
                     isWeatherLoading = _weatherInfo.value == null
                 )
             }
             if (_weatherInfo.value == null) {
                 getCurrentWeather()
+            }
+
+            kotlinx.coroutines.delay(1500)
+            _uiState.update {
+                it.copy(showMorningDashboard = true)
             }
         }
     }

@@ -152,8 +152,10 @@ class AndroidAlarmScheduler(
 
     private fun calculateNextAlarmCalendar(item: AlarmItem): Calendar {
         val now = Calendar.getInstance()
+        val nowMs = now.timeInMillis
 
-        if (item.snoozedUntilMillis != null && item.snoozedUntilMillis > now.timeInMillis) {
+        // If alarm was snoozed and the snooze time is in the future (> now + 1 sec), use snooze time
+        if (item.snoozedUntilMillis != null && item.snoozedUntilMillis > nowMs + 1000L) {
             return Calendar.getInstance().apply {
                 timeInMillis = item.snoozedUntilMillis
             }
@@ -168,7 +170,8 @@ class AndroidAlarmScheduler(
 
         val days = item.selectedDays
         if (days.isEmpty()) {
-            if (calendar.before(now)) {
+            // One-time alarm: if calendar time is now or in the past (<= nowMs + 1000L), schedule for tomorrow
+            if (calendar.timeInMillis <= nowMs + 1000L) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
             return calendar
@@ -188,13 +191,14 @@ class AndroidAlarmScheduler(
         for (i in 0..7) {
             val testCal = calendar.clone() as Calendar
             testCal.add(Calendar.DAY_OF_YEAR, i)
-            if (i == 0 && testCal.before(now)) continue
+            // Skip testCal if it represents current time or past (<= nowMs + 1000L)
+            if (testCal.timeInMillis <= nowMs + 1000L) continue
             if (testCal.get(Calendar.DAY_OF_WEEK) in targetCalDays) {
                 return testCal
             }
         }
 
-        if (calendar.before(now)) {
+        if (calendar.timeInMillis <= nowMs + 1000L) {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
         return calendar

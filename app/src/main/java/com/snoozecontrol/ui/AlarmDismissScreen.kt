@@ -78,6 +78,9 @@ fun AlarmDismissScreen(
     canSnooze: Boolean = false,
     snoozeDurationMinutes: Int = 5,
     remainingSnoozes: Int = 3,
+    shakeProgress: Float = 0f,
+    currentShakes: Int = 0,
+    requiredShakes: Int = 25,
     onAnswerChange: (String) -> Unit,
     onBarcodeScanned: (String) -> Unit,
     onDismissClick: () -> Unit,
@@ -303,81 +306,157 @@ fun AlarmDismissScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Middle Math Challenge Card
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                    if (challengeType == ChallengeType.SHAKE) {
+                        LiquidProgressWave(
+                            progress = shakeProgress,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                         ) {
-                            Text(
-                                text = "Solve to Dismiss",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.shake_progress_format,
+                                        currentShakes,
+                                        requiredShakes
+                                    ),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                                AnimatedVisibility(visible = errorMessage != null) {
+                                    errorMessage?.let {
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(top = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else if (challengeType == ChallengeType.MATH) {
+                        // Middle Math Challenge Card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Solve to Dismiss",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
 
-                            Text(
-                                text = equation,
-                                style = MaterialTheme.typography.displayLarge.copy(
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 42.sp,
-                                    letterSpacing = (-0.5).sp
-                                ),
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                                Spacer(modifier = Modifier.height(8.dp))
 
-                            Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    text = equation,
+                                    style = MaterialTheme.typography.displayLarge.copy(
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 42.sp,
+                                        letterSpacing = (-0.5).sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
 
-                            OutlinedTextField(
-                                value = answerInput,
-                                onValueChange = onAnswerChange,
-                                placeholder = {
-                                    Text(
-                                        stringResource(R.string.answer_placeholder),
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                OutlinedTextField(
+                                    value = answerInput,
+                                    onValueChange = onAnswerChange,
+                                    placeholder = {
+                                        Text(
+                                            stringResource(R.string.answer_placeholder),
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number,
+                                        imeAction = ImeAction.Done
+                                    ),
+                                    isError = errorMessage != null,
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                    ),
+                                    textStyle = MaterialTheme.typography.headlineMedium.copy(
                                         textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number,
-                                    imeAction = ImeAction.Done
-                                ),
-                                isError = errorMessage != null,
-                                singleLine = true,
-                                shape = RoundedCornerShape(18.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                                ),
-                                textStyle = MaterialTheme.typography.headlineMedium.copy(
-                                    textAlign = TextAlign.Center,
+                                )
+
+                                AnimatedVisibility(visible = errorMessage != null) {
+                                    errorMessage?.let {
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(top = 10.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // ChallengeType.NONE Card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Ready to start your day?",
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                            )
-
-                            AnimatedVisibility(visible = errorMessage != null) {
-                                errorMessage?.let {
-                                    Text(
-                                        text = it,
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(top = 10.dp)
-                                    )
-                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Tap the button below to dismiss",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
