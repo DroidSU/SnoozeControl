@@ -57,7 +57,7 @@ class AlarmDismissActivity : ComponentActivity() {
                 if (uiState.isDismissed) {
                     stopAlarmService()
                     if (uiState.isSnoozed) {
-                        finish()
+                        finishAndRemoveTask()
                     }
                 }
             }
@@ -73,7 +73,7 @@ class AlarmDismissActivity : ComponentActivity() {
                             isWeatherLoading = uiState.isWeatherLoading,
                             quote = uiState.quote,
                             userName = uiState.userName,
-                            onStartDayClick = { finish() }
+                            onStartDayClick = { finishAndRemoveTask() }
                         )
                     } else {
                         AlarmDismissScreen(
@@ -120,6 +120,15 @@ class AlarmDismissActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         shakeDetector?.let { sensorManager?.unregisterListener(it) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val alarmId = intent.getIntExtra(EXTRA_ALARM_ID, -1)
+        if (alarmId != -1) {
+            viewModel.loadDismissChallenge(alarmId)
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {

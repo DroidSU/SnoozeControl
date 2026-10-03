@@ -2,6 +2,7 @@ package com.snoozecontrol.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -185,7 +186,8 @@ fun AddEditAlarmScreen(
                             text = if (uiState.currentStep < 3) "Continue" else "Create Alarm",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                         if (uiState.currentStep < 3) {
                             Spacer(modifier = Modifier.width(8.dp))
@@ -222,15 +224,8 @@ fun AddEditAlarmScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // MODERN PROGRESS INDICATOR BAR
-                StepIndicator(currentStep = uiState.currentStep, onStepClick = onSetStep)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // CONTEXTUAL SUMMARY BAR (Steps 2 & 3)
-                if (uiState.currentStep > 1) {
-                    ContextualSummaryBar(uiState = uiState)
-                }
+                // 3 DOTS STEP INDICATOR
+                ThreeDotsStepIndicator(currentStep = uiState.currentStep)
 
                 // STEP CONTENT WIZARD
                 when (uiState.currentStep) {
@@ -270,108 +265,40 @@ fun AddEditAlarmScreen(
     }
 }
 
-// MODERN STEP INDICATOR BAR
+// ==========================================
+// 3 DOTS STEP INDICATOR
+// ==========================================
 @Composable
-fun StepIndicator(currentStep: Int, onStepClick: (Int) -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+fun ThreeDotsStepIndicator(currentStep: Int) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(bottom = 16.dp)
     ) {
-        val stepNames = listOf("Time", "Wake Method", "Schedule")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            stepNames.forEachIndexed { index, name ->
-                val stepNum = index + 1
-                val isSelected = currentStep == stepNum
-                val isDone = currentStep > stepNum
+        (1..3).forEach { step ->
+            val isActive = currentStep == step
+            val isPassed = currentStep > step
+            val dotWidth by animateDpAsState(
+                targetValue = if (isActive) 24.dp else 8.dp,
+                label = "dotWidth"
+            )
+            val dotColor by animateColorAsState(
+                targetValue = when {
+                    isActive -> MaterialTheme.colorScheme.primary
+                    isPassed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                },
+                label = "dotColor"
+            )
 
-                Text(
-                    text = name,
-                    fontSize = 12.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                    color = when {
-                        isSelected -> MaterialTheme.colorScheme.primary
-                        isDone -> MaterialTheme.colorScheme.onSurface
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    },
-                    modifier = Modifier.clickable {
-                        if (stepNum < currentStep) onStepClick(stepNum)
-                    }
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .height(8.dp)
+                    .width(dotWidth)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 3-Segment Progress Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            (1..3).forEach { stepNum ->
-                val isCompleted = currentStep >= stepNum
-                val barColor by animateColorAsState(
-                    if (isCompleted) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceVariant,
-                    label = "barColor"
-                )
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .clip(CircleShape)
-                        .background(barColor)
-                        .clickable {
-                            if (stepNum < currentStep) onStepClick(stepNum)
-                        }
-                )
-            }
-        }
-    }
-}
-
-// CONTEXTUAL SUMMARY BAR
-@Composable
-fun ContextualSummaryBar(uiState: AddEditAlarmUiState) {
-    val locale = remember { Locale.getDefault() }
-    val timeStr = remember(uiState.hour12, uiState.minute, uiState.isAm) {
-        String.format(
-            locale,
-            "%02d:%02d %s",
-            uiState.hour12,
-            uiState.minute,
-            if (uiState.isAm) "AM" else "PM"
-        )
-    }
-    val challengeStr = when (uiState.challengeType) {
-        ChallengeType.MATH -> "Math (${uiState.mathDifficulty.displayName})"
-        ChallengeType.BARCODE -> "Barcode"
-        ChallengeType.SHAKE -> "Shake"
-        else -> "None"
-    }
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
-    ) {
-        Text(
-            text = "$timeStr · $challengeStr",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(vertical = 10.dp, horizontal = 16.dp)
-        )
     }
 }
 

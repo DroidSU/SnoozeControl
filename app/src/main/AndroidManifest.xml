@@ -51,6 +51,7 @@
         <activity
             android:name=".AlarmDismissActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.SnoozeControl"
             android:windowSoftInputMode="adjustResize"
             android:showWhenLocked="true"
