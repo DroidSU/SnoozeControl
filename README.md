@@ -1,9 +1,10 @@
 # Snooze Control ⏰
 
-[![Android Min SDK](https://img.shields.io/badge/Min%20SDK-26%20(Android%208.0)-brightgreen)](https://developer.android.com/about/versions/oreo)
-[![Target SDK](https://img.shields.io/badge/Target%20SDK-34%20(Android%2014)-blue)](https://developer.android.com/about/versions/14)
+[![Android Min SDK](https://img.shields.io/badge/Min%20SDK-24%20(Android%207.0)-brightgreen)](https://developer.android.com/about/versions/nougat)
+[![Target SDK](https://img.shields.io/badge/Target%20SDK-36%20(Android)-blue)](https://developer.android.com/about/versions)
+[![Version](https://img.shields.io/badge/Version-1.1%20(v2)-orange)](app/build.gradle.kts)
 [![Language](https://img.shields.io/badge/Language-Kotlin-purple)](https://kotlinlang.org/)
-[![UI](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-orange)](https://developer.android.com/jetpack/compose)
+[![UI](https://img.shields.io/badge/UI-Jetpack%20Compose%20%7C%20Material%203-blueviolet)](https://developer.android.com/jetpack/compose)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 **Snooze Control** is a feature-rich, ultra-reliable Android wake-up alarm clock app engineered
@@ -111,20 +112,15 @@ Model-View-ViewModel)** with Unidirectional Data Flow (UDF), Kotlin Coroutines, 
 ```
 
 * **Language:** [Kotlin 2.0+](https://kotlinlang.org/)
-* **UI
-  Framework:** [Jetpack Compose](https://developer.android.com/jetpack/compose) + [Material 3 Design Tokens](https://m3.material.io/)
+* **UI Framework:** [Jetpack Compose](https://developer.android.com/jetpack/compose) + [Material 3 Design Tokens](https://m3.material.io/)
 * **Dependency Injection:** [Hilt (Dagger)](https://dagger.dev/hilt/)
-* **Local
-  Database:** [Room Persistence Library](https://developer.android.com/training/data-storage/room)
-  with [KSP](https://kotlinlang.org/docs/ksp-overview.html)
+* **Local Database:** [Room Persistence Library](https://developer.android.com/training/data-storage/room) with [KSP](https://kotlinlang.org/docs/ksp-overview.html)
 * **Asynchronous Flow:** Kotlin Coroutines & `StateFlow`
-* **Networking:** [Ktor Client](https://ktor.io/) (`ktor-client-cio`,
-  `ktor-client-content-negotiation`)
-* **Camera & Vision
-  Processing:** [CameraX](https://developer.android.com/training/camerax) + [Google ML Kit Barcode Scanning](https://developers.google.com/ml-kit/vision/barcode-scanning)
+* **Networking:** [Ktor Client](https://ktor.io/) (`ktor-client-core`, `ktor-client-android`, `ktor-client-content-negotiation`)
+* **Camera & Vision Processing:** [CameraX](https://developer.android.com/training/camerax) + [Google ML Kit Barcode Scanning](https://developers.google.com/ml-kit/vision/barcode-scanning)
 * **Scheduling:** Android `AlarmManager` (`setAlarmClock`) + `ForegroundService` (`mediaPlayback`)
 * **Voice Synthesis:** Android `TextToSpeech` (TTS)
-* **Minimum SDK:** 26 (Android 8.0 Oreo) | **Target SDK:** 34 (Android 14)
+* **Minimum SDK:** 24 (Android 7.0 Nougat) | **Target SDK:** 36 | **Compile SDK:** 37
 
 ---
 
@@ -146,19 +142,19 @@ SnoozeControl/
 │   │           ├── data/                            # Room Entity, DAO & Database
 │   │           ├── di/                              # Hilt Dependency Injection Modules
 │   │           ├── model/                           # Domain Models (AlarmItem, ChallengeType)
-│   │           ├── receiver/                        # Alarm, Bedtime & Boot Receivers
+│   │           ├── receiver/                        # Alarm, Bedtime, Boot & Upcoming Alarm Receivers
 │   │           ├── scheduler/                       # AlarmManager Scheduler Interfaces & Impl
 │   │           ├── service/                         # Foreground Service for Sound & Volume Ramp
 │   │           ├── ui/                              # Jetpack Compose Screens & Canvas UI
 │   │           │   ├── AddEditAlarmScreen.kt
-│   │   │       ├── AlarmDismissScreen.kt
-│   │   │       ├── AlarmScreen.kt
-│   │   │       ├── BarcodeRegistrationScreen.kt
-│   │   │       ├── MorningDashboardScreen.kt
-│   │   │       ├── LiquidProgressWave.kt
-│   │   │       └── theme/                           # Color, Typography & M3 Theme
-│   │   │       ├── util/                            # BarcodeScanner, ShakeDetector, WeatherRepo
-│   │   │       └── viewmodel/                       # ViewModels
+│   │           │   ├── AlarmDismissScreen.kt
+│   │           │   ├── AlarmScreen.kt
+│   │           │   ├── BarcodeRegistrationScreen.kt
+│   │           │   ├── MorningDashboardScreen.kt
+│   │           │   ├── LiquidProgressWave.kt
+│   │           │   └── theme/                       # Color, Typography & M3 Theme
+│   │           ├── util/                            # BarcodeScanner, ShakeDetector, WeatherRepo, Notification Manager
+│   │           └── viewmodel/                       # ViewModels
 │   └── build.gradle.kts
 ├── PRIVACY_POLICY.md                        # Application Privacy Policy
 ├── README.md                                # Project Documentation
@@ -172,9 +168,8 @@ SnoozeControl/
 ### Prerequisites
 
 * **Android Studio:** Ladybug (2024.2.1) or newer
-* **JDK:** Version 17 or higher
-* **Android Device / Emulator:** API Level 26 (Android 8.0) or higher (Physical device recommended
-  for testing CameraX barcode scanning and Shake sensors)
+* **JDK:** Version 11 or higher (Java 11 compatibility)
+* **Android Device / Emulator:** API Level 24 (Android 7.0 Nougat) or higher (Physical device recommended for testing CameraX barcode scanning and Shake sensors)
 
 ### Build & Run Instructions
 1. **Clone the repository:**
@@ -202,13 +197,9 @@ SnoozeControl/
 
 Snooze Control is designed with privacy at its core:
 
-* **100% Local Storage:** Alarms, barcodes, and settings are stored exclusively on your device in
-  local Room database tables.
-* **On-Device Computer Vision:** Barcode scanning processes video frames locally in memory using
-  Google ML Kit. No photos or video feeds are ever stored or uploaded.
-* **Anonymous Weather Location:** Location permission is used strictly to fetch localized weather
-  data from Open-Meteo API during the morning briefing. No location tracking or user identifiers are
-  transmitted or retained.
+* **100% Local Storage:** Alarms, barcodes, and settings are stored exclusively on your device in local Room database tables.
+* **On-Device Computer Vision:** Barcode scanning processes video frames locally in memory using Google ML Kit. No photos or video feeds are ever stored or uploaded.
+* **Anonymous Weather Location:** Location permission is used strictly to fetch localized weather data from Open-Meteo API during the morning briefing. No location tracking or user identifiers are transmitted or retained.
 
 For full details, please review our complete [Privacy Policy](PRIVACY_POLICY.md).
 
@@ -229,5 +220,5 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations workouts specified under the License.
+limitations under the License.
 ```

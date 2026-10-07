@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,18 +39,11 @@ class AlarmViewModel @Inject constructor(
         )
 
     val nextAlarm: StateFlow<AlarmItem?> = alarms.map { alarmList ->
-        val activeAlarms = alarmList.filter { it.isEnabled }
+        val nowMs = System.currentTimeMillis()
+        val activeAlarms = alarmList.filter { it.isEnabled && it.calculateNextCalendar().timeInMillis > nowMs }
         if (activeAlarms.isEmpty()) return@map null
 
-        val now = Calendar.getInstance()
-        val currentHour = now.get(Calendar.HOUR_OF_DAY)
-        val currentMinute = now.get(Calendar.MINUTE)
-
-        activeAlarms.sortedWith(compareBy({
-            var diff = (it.hour * 60 + it.minute) - (currentHour * 60 + currentMinute)
-            if (diff <= 0) diff += 24 * 60
-            diff
-        })).firstOrNull()
+        activeAlarms.minByOrNull { it.calculateNextCalendar().timeInMillis }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -84,7 +76,11 @@ class AlarmViewModel @Inject constructor(
     fun toggleAlarm(context: Context, alarmId: Int) {
         viewModelScope.launch {
             val alarm = alarms.value.find { it.id == alarmId } ?: return@launch
-            val updatedAlarm = alarm.copy(isEnabled = !alarm.isEnabled)
+            val newEnabled = !alarm.isEnabled
+            val updatedAlarm = alarm.copy(
+                isEnabled = newEnabled,
+                skippedOccurrenceMillis = if (newEnabled) null else alarm.skippedOccurrenceMillis
+            )
             alarmDao.updateAlarm(updatedAlarm)
 
             if (updatedAlarm.isEnabled) {
@@ -92,6 +88,7 @@ class AlarmViewModel @Inject constructor(
             } else {
                 scheduler.cancel(updatedAlarm)
             }
+            UpcomingAlarmNotificationManager.refreshUpcomingNotification(getApplication())
         }
     }
 
@@ -100,6 +97,7 @@ class AlarmViewModel @Inject constructor(
             recentlyDeletedAlarm = alarm
             alarmDao.deleteAlarm(alarm)
             scheduler.cancel(alarm)
+            UpcomingAlarmNotificationManager.refreshUpcomingNotification(getApplication())
         }
     }
 
@@ -111,6 +109,7 @@ class AlarmViewModel @Inject constructor(
                 if (restoredAlarm.isEnabled) {
                     scheduler.schedule(restoredAlarm)
                 }
+                UpcomingAlarmNotificationManager.refreshUpcomingNotification(getApplication())
                 recentlyDeletedAlarm = null
             }
         }

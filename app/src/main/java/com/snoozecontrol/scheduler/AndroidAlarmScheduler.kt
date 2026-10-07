@@ -150,57 +150,7 @@ class AndroidAlarmScheduler(
         private const val BEDTIME_ID_OFFSET = 100000
     }
 
-    private fun calculateNextAlarmCalendar(item: AlarmItem): Calendar {
-        val now = Calendar.getInstance()
-        val nowMs = now.timeInMillis
-
-        // If alarm was snoozed and the snooze time is in the future (> now + 1 sec), use snooze time
-        if (item.snoozedUntilMillis != null && item.snoozedUntilMillis > nowMs + 1000L) {
-            return Calendar.getInstance().apply {
-                timeInMillis = item.snoozedUntilMillis
-            }
-        }
-
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, item.hour)
-            set(Calendar.MINUTE, item.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        val days = item.selectedDays
-        if (days.isEmpty()) {
-            // One-time alarm: if calendar time is now or in the past (<= nowMs + 1000L), schedule for tomorrow
-            if (calendar.timeInMillis <= nowMs + 1000L) {
-                calendar.add(Calendar.DAY_OF_YEAR, 1)
-            }
-            return calendar
-        }
-
-        val calDayMap = mapOf(
-            1 to Calendar.MONDAY,
-            2 to Calendar.TUESDAY,
-            3 to Calendar.WEDNESDAY,
-            4 to Calendar.THURSDAY,
-            5 to Calendar.FRIDAY,
-            6 to Calendar.SATURDAY,
-            7 to Calendar.SUNDAY
-        )
-        val targetCalDays = days.mapNotNull { calDayMap[it] }.toSet()
-
-        for (i in 0..7) {
-            val testCal = calendar.clone() as Calendar
-            testCal.add(Calendar.DAY_OF_YEAR, i)
-            // Skip testCal if it represents current time or past (<= nowMs + 1000L)
-            if (testCal.timeInMillis <= nowMs + 1000L) continue
-            if (testCal.get(Calendar.DAY_OF_WEEK) in targetCalDays) {
-                return testCal
-            }
-        }
-
-        if (calendar.timeInMillis <= nowMs + 1000L) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return calendar
+    fun calculateNextAlarmCalendar(item: AlarmItem): Calendar {
+        return item.calculateNextCalendar()
     }
 }

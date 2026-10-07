@@ -132,10 +132,10 @@ fun MorningDashboardScreen(
     val currentHour = remember(currentTimeText) { Calendar.getInstance()[Calendar.HOUR_OF_DAY] }
     val timeGreeting = remember(currentHour) {
         when (currentHour) {
-            in 5..11 -> "Good morning,"
-            in 12..16 -> "Good afternoon,"
-            in 17..20 -> "Good evening,"
-            else -> "Good night,"
+            in 5..11 -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            in 17..20 -> "Good evening"
+            else -> "Good night"
         }
     }
 
@@ -294,15 +294,18 @@ fun MorningDashboardScreen(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 // 3. User name
-                Text(
-                    text = actualUserName,
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
+                /**
+                 * This section is commented out now, uncomment it when you add getting usernames.
+                 */
+//                Text(
+//                    text = actualUserName,
+//                    style = MaterialTheme.typography.headlineLarge.copy(
+//                        fontSize = 32.sp,
+//                        fontWeight = FontWeight.Bold
+//                    ),
+//                    color = MaterialTheme.colorScheme.onBackground
+//                )
+//
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // 4. Weather / temperature

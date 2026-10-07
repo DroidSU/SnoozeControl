@@ -3,6 +3,7 @@ package com.snoozecontrol.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.snoozecontrol.util.Utils
+import java.util.Calendar
 
 @Entity(tableName = "alarms")
 data class AlarmItem(
@@ -21,7 +22,8 @@ data class AlarmItem(
     val snoozedUntilMillis: Long? = null,
     val ringtoneUri: String? = null,
     val ringtoneTitle: String = "Default Alarm Sound",
-    val mathDifficulty: MathDifficulty = MathDifficulty.MEDIUM
+    val mathDifficulty: MathDifficulty = MathDifficulty.MEDIUM,
+    val skippedOccurrenceMillis: Long? = null
 ) {
     val hour12: Int
         get() = Utils.toHour12(hour)
@@ -41,6 +43,59 @@ data class AlarmItem(
 
     val isOnce: Boolean
         get() = selectedDays.isEmpty()
+
+    fun calculateNextCalendar(): Calendar {
+        val now = Calendar.getInstance()
+        val nowMs = now.timeInMillis
+
+        if (snoozedUntilMillis != null && snoozedUntilMillis > nowMs + 1000L) {
+            return Calendar.getInstance().apply {
+                timeInMillis = snoozedUntilMillis
+            }
+        }
+
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val days = selectedDays
+        if (days.isEmpty()) {
+            if (calendar.timeInMillis <= nowMs + 1000L) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+            }
+            return calendar
+        }
+
+        val calDayMap = mapOf(
+            1 to Calendar.MONDAY,
+            2 to Calendar.TUESDAY,
+            3 to Calendar.WEDNESDAY,
+            4 to Calendar.THURSDAY,
+            5 to Calendar.FRIDAY,
+            6 to Calendar.SATURDAY,
+            7 to Calendar.SUNDAY
+        )
+        val targetCalDays = days.mapNotNull { calDayMap[it] }.toSet()
+
+        for (i in 0..7) {
+            val testCal = calendar.clone() as Calendar
+            testCal.add(Calendar.DAY_OF_YEAR, i)
+            if (testCal.timeInMillis <= nowMs + 1000L) continue
+            if (skippedOccurrenceMillis != null && testCal.timeInMillis <= skippedOccurrenceMillis) continue
+
+            if (testCal.get(Calendar.DAY_OF_WEEK) in targetCalDays) {
+                return testCal
+            }
+        }
+
+        if (calendar.timeInMillis <= nowMs + 1000L) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return calendar
+    }
 
     fun getRepeatSummary(): String {
         val days = selectedDays

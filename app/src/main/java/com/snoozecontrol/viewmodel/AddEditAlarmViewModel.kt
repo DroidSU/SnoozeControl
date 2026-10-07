@@ -9,6 +9,7 @@ import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.model.MathDifficulty
 import com.snoozecontrol.scheduler.AlarmScheduler
+import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import com.snoozecontrol.util.Utils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -201,6 +202,7 @@ class AddEditAlarmViewModel @Inject constructor(
                 alarmDao.updateAlarm(alarmItem)
                 scheduler.schedule(alarmItem)
             }
+            UpcomingAlarmNotificationManager.refreshUpcomingNotification(getApplication())
             onSaved()
         }
     }

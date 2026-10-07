@@ -23,6 +23,7 @@ import com.snoozecontrol.AlarmDismissActivity
 import com.snoozecontrol.R
 import com.snoozecontrol.data.AlarmDao
 import com.snoozecontrol.data.AlarmDatabase
+import com.snoozecontrol.receiver.AlarmReceiver
 import com.snoozecontrol.scheduler.AndroidAlarmScheduler
 import com.snoozecontrol.util.UpcomingAlarmNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -53,20 +54,33 @@ class AlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_DISMISS) {
+        val incomingAction = intent?.action
+        val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
+
+        if (incomingAction == ACTION_DISMISS) {
             stopSelf()
             return START_NOT_STICKY
         }
 
         acquireWakeLock()
-        
-        val alarmId = intent?.getIntExtra("ALARM_ID", -1) ?: -1
 
         val fullScreenIntent = AlarmDismissActivity.createIntent(this, alarmId)
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this, 0, fullScreenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val turnOffIntent = Intent(this, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_TURN_OFF
+            putExtra("ALARM_ID", alarmId)
+            data = Uri.parse("snoozecontrol://alarm/service/$alarmId")
+        }
+        val turnOffPendingIntent = PendingIntent.getBroadcast(
+            this,
+            alarmId,
+            turnOffIntent,
+            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notificationManager = getSystemService(NotificationManager::class.java)
@@ -84,6 +98,11 @@ class AlarmService : Service() {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(false)
             .setOngoing(true)
+            .addAction(
+                R.drawable.ic_snooze_control_1,
+                "Turn Off",
+                turnOffPendingIntent
+            )
 
         if (canUseFullScreen) {
             builder.setFullScreenIntent(fullScreenPendingIntent, true)
