@@ -8,11 +8,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.snoozecontrol.MainActivity
 import com.snoozecontrol.R
 import com.snoozecontrol.data.AlarmDatabase
@@ -71,67 +71,71 @@ object UpcomingAlarmNotificationManager {
                 return
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    Log.w(
-                        "UpcomingAlarmManager",
-                        "Notification permission not granted. Skipping notification."
-                    )
-                    return
-                }
-            }
-
-            createNotificationChannel(notificationManager)
-
-            val contentIntent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            val contentPendingIntent = PendingIntent.getActivity(
-                context,
-                0,
-                contentIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val turnOffIntent = Intent(context, UpcomingAlarmReceiver::class.java).apply {
-                action = UpcomingAlarmReceiver.ACTION_TURN_OFF_ALARM
-                putExtra(UpcomingAlarmReceiver.EXTRA_ALARM_ID, nextAlarm.id)
-                data = Uri.parse("snoozecontrol://alarm/upcoming/${nextAlarm.id}")
-            }
-            val turnOffPendingIntent = PendingIntent.getBroadcast(
-                context,
-                nextAlarm.id,
-                turnOffIntent,
-                PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val text = "Alarm set for ${nextAlarm.displayTime}"
-
-            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .setContentTitle("Upcoming Alarm ⏰")
-                .setContentText(text)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setCategory(NotificationCompat.CATEGORY_REMINDER)
-                .setOngoing(true)
-                .setContentIntent(contentPendingIntent)
-                .addAction(
-                    R.drawable.ic_snooze_control_1,
-                    "Turn Off",
-                    turnOffPendingIntent
-                )
-                .setSound(null)
-                .build()
-
-            notificationManager.notify(NOTIFICATION_ID, notification)
-
             val nextAlarmTimeMs = nextAlarm.calculateNextCalendar().timeInMillis
             val preAlarmRefreshMs = nextAlarmTimeMs - TWO_HOURS_MS
             val nowMs = System.currentTimeMillis()
+
+            if (nowMs < preAlarmRefreshMs) {
+                notificationManager.cancel(NOTIFICATION_ID)
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        Log.w(
+                            "UpcomingAlarmManager",
+                            "Notification permission not granted. Skipping notification."
+                        )
+                        return
+                    }
+                }
+
+                createNotificationChannel(notificationManager)
+
+                val contentIntent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                val contentPendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    contentIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                val turnOffIntent = Intent(context, UpcomingAlarmReceiver::class.java).apply {
+                    action = UpcomingAlarmReceiver.ACTION_TURN_OFF_ALARM
+                    putExtra(UpcomingAlarmReceiver.EXTRA_ALARM_ID, nextAlarm.id)
+                    data = "snoozecontrol://alarm/upcoming/${nextAlarm.id}".toUri()
+                }
+                val turnOffPendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    nextAlarm.id,
+                    turnOffIntent,
+                    PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                val text = "Alarm set for ${nextAlarm.displayTime}"
+
+                val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                    .setContentTitle("Upcoming Alarm ⏰")
+                    .setContentText(text)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                    .setOngoing(true)
+                    .setContentIntent(contentPendingIntent)
+                    .addAction(
+                        R.drawable.ic_snooze_control_1,
+                        "Turn Off",
+                        turnOffPendingIntent
+                    )
+                    .setSound(null)
+                    .build()
+
+                notificationManager.notify(NOTIFICATION_ID, notification)
+            }
 
             if (preAlarmRefreshMs > nowMs && alarmManager != null) {
                 try {

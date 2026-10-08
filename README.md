@@ -150,11 +150,13 @@ SnoozeControl/
 │   │           │   ├── AlarmDismissScreen.kt
 │   │           │   ├── AlarmScreen.kt
 │   │           │   ├── BarcodeRegistrationScreen.kt
+│   │           │   ├── BarcodeScannerView.kt
+│   │           │   ├── ChallengeCard.kt
 │   │           │   ├── MorningDashboardScreen.kt
 │   │           │   ├── LiquidProgressWave.kt
 │   │           │   └── theme/                       # Color, Typography & M3 Theme
-│   │           ├── util/                            # BarcodeScanner, ShakeDetector, WeatherRepo, Notification Manager
-│   │           └── viewmodel/                       # ViewModels
+│   │           ├── util/                            # BarcodeScanner, ManufacturerPermissionHelper, PermissionManager, QuoteProvider, ShakeDetector, UpcomingAlarmNotificationManager, WeatherRepository
+│   │           └── viewmodel/                       # ViewModels (AlarmViewModel, AddEditAlarmViewModel, AlarmDismissViewModel)
 │   └── build.gradle.kts
 ├── PRIVACY_POLICY.md                        # Application Privacy Policy
 ├── README.md                                # Project Documentation
