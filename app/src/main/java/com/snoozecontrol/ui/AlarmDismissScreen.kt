@@ -81,6 +81,8 @@ fun AlarmDismissScreen(
     shakeProgress: Float = 0f,
     currentShakes: Int = 0,
     requiredShakes: Int = 25,
+    currentStage: Int = 1,
+    totalStages: Int = 1,
     onAnswerChange: (String) -> Unit,
     onBarcodeScanned: (String) -> Unit,
     onDismissClick: () -> Unit,
@@ -290,6 +292,31 @@ fun AlarmDismissScreen(
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
+
+                        if (totalStages > 1) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(
+                                        horizontal = 14.dp,
+                                        vertical = 6.dp
+                                    ),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text("⚡", fontSize = 14.sp)
+                                    Text(
+                                        text = "STAGE $currentStage OF $totalStages",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+                            }
+                        }
 
                         Text(
                             text = stringResource(R.string.rise_and_shine),

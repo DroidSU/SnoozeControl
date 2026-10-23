@@ -10,6 +10,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +24,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -137,46 +137,50 @@ fun AlarmScreen(
                 )
                 .systemBarsPadding()
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    bottom = innerPadding.calculateBottomPadding() + 90.dp,
-                    start = 18.dp,
-                    end = 18.dp,
-                    top = 140.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 18.dp)
             ) {
-                if (alarms.isEmpty()) {
-                    item {
-                        EmptyStateView()
-                    }
-                } else {
-                    items(alarms, key = { it.id }) { alarm ->
-                        SwipeToDismissRow(
-                            alarm = alarm,
-                            onDismiss = { onDeleteAlarm(alarm) },
-                            onContentClick = { onEditClick(alarm.id) },
-                            onToggle = { onToggleAlarm(alarm.id) }
-                        )
+                Spacer(modifier = Modifier.height(18.dp))
+                FloatingGreetingBar(greeting, nextAlarm, weatherInfo)
+                Spacer(modifier = Modifier.height(14.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(
+                        bottom = innerPadding.calculateBottomPadding() + 90.dp,
+                        top = 0.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    if (alarms.isEmpty()) {
+                        item {
+                            EmptyStateView()
+                        }
+                    } else {
+                        items(alarms, key = { it.id }) { alarm ->
+                            SwipeToDismissRow(
+                                alarm = alarm,
+                                onDismiss = { onDeleteAlarm(alarm) },
+                                onContentClick = { onEditClick(alarm.id) },
+                                onToggle = { onToggleAlarm(alarm.id) }
+                            )
+                        }
                     }
                 }
             }
-
-            FloatingGreetingBar(greeting, nextAlarm, weatherInfo)
         }
     }
 }
 
 @Composable
 fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: WeatherInfo?) {
-    val todayQuote = remember { QuoteProvider.getTodayQuote() }
+    var currentQuote by remember { mutableStateOf(QuoteProvider.getTodayQuote()) }
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(18.dp)
-            .statusBarsPadding(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         tonalElevation = 8.dp,
@@ -243,31 +247,49 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: We
             Spacer(modifier = Modifier.height(10.dp))
 
             Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { currentQuote = QuoteProvider.getRandomQuote() },
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
                     Icon(
                         imageVector = Icons.Default.FormatQuote,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .padding(top = 2.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "“${todayQuote.text}”",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(
                         modifier = Modifier.weight(1f)
-                    )
+                    ) {
+                        Text(
+                            text = "“${currentQuote.text}”",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "— ${currentQuote.author}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            modifier = Modifier.align(Alignment.End)
+                        )
+                    }
                 }
             }
         }
@@ -428,11 +450,17 @@ fun AlarmItemRow(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.alpha(contentAlpha)
                 ) {
-                    val challengeIcon = when (alarm.challengeType) {
-                        ChallengeType.MATH -> Icons.Default.Calculate
-                        ChallengeType.BARCODE -> Icons.Default.QrCodeScanner
-                        ChallengeType.SHAKE -> Icons.Default.NotificationsActive
+                    val challengeIcon = when {
+                        alarm.sleepLevel > 0 -> Icons.Default.NotificationsActive
+                        alarm.challengeType == ChallengeType.MATH -> Icons.Default.Calculate
+                        alarm.challengeType == ChallengeType.BARCODE -> Icons.Default.QrCodeScanner
+                        alarm.challengeType == ChallengeType.SHAKE -> Icons.Default.NotificationsActive
                         else -> Icons.Default.NotificationsActive
+                    }
+                    val challengeLabel = if (alarm.sleepLevel > 0) {
+                        "Sleep Lvl ${alarm.sleepLevel}"
+                    } else {
+                        alarm.challengeType.name.lowercase().replaceFirstChar { it.uppercase() }
                     }
                     Surface(
                         shape = RoundedCornerShape(8.dp),
@@ -450,8 +478,7 @@ fun AlarmItemRow(
                             )
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(
-                                text = alarm.challengeType.name.lowercase()
-                                    .replaceFirstChar { it.uppercase() },
+                                text = challengeLabel,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (alarm.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline

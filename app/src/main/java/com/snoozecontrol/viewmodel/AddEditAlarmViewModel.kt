@@ -34,6 +34,8 @@ data class AddEditAlarmUiState(
     val selectedDays: Set<Int> = emptySet(),
     val snoozeDurationMinutes: Int = 5,
     val isBedtimeReminderEnabled: Boolean = true,
+    val sleepLevel: Int = 0, // 0 = Custom Mode, 1..5 = Sleep Level Mode
+    val isSleepLevelMode: Boolean = false,
     val isLoaded: Boolean = false
 ) {
     val final24Hour: Int
@@ -43,10 +45,14 @@ data class AddEditAlarmUiState(
         get() = selectedDays.sorted().joinToString(",")
 
     val isStep2Valid: Boolean
-        get() = challengeType != ChallengeType.BARCODE || targetBarcode != null
+        get() = if (isSleepLevelMode) {
+            sleepLevel in 1..5
+        } else {
+            challengeType != ChallengeType.BARCODE || targetBarcode != null
+        }
 
     val isSaveEnabled: Boolean
-        get() = challengeType != ChallengeType.BARCODE || targetBarcode != null
+        get() = isStep2Valid
 }
 
 @HiltViewModel
@@ -73,6 +79,9 @@ class AddEditAlarmViewModel @Inject constructor(
             val days = if (alarm.repeatDays.isBlank()) emptySet()
             else alarm.repeatDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
 
+            val isSleepMode = alarm.sleepLevel > 0
+            val initialSleepLevel = if (alarm.sleepLevel in 1..5) alarm.sleepLevel else 2
+
             _uiState.value = AddEditAlarmUiState(
                 alarmId = alarm.id,
                 currentStep = 1,
@@ -87,6 +96,8 @@ class AddEditAlarmViewModel @Inject constructor(
                 selectedDays = days,
                 snoozeDurationMinutes = alarm.snoozeDurationMinutes,
                 isBedtimeReminderEnabled = alarm.isBedtimeReminderEnabled,
+                sleepLevel = initialSleepLevel,
+                isSleepLevelMode = isSleepMode,
                 isLoaded = true
             )
         } else {
@@ -109,6 +120,8 @@ class AddEditAlarmViewModel @Inject constructor(
                 selectedDays = emptySet(),
                 snoozeDurationMinutes = 5,
                 isBedtimeReminderEnabled = true,
+                sleepLevel = 2,
+                isSleepLevelMode = true, // Default to Sleep Level Mode for new alarms
                 isLoaded = true
             )
         }
@@ -154,6 +167,16 @@ class AddEditAlarmViewModel @Inject constructor(
         _uiState.update { it.copy(mathDifficulty = difficulty) }
     }
 
+    fun onSleepLevelModeToggle(isSleepLevelMode: Boolean) {
+        _uiState.update { it.copy(isSleepLevelMode = isSleepLevelMode) }
+    }
+
+    fun onSleepLevelChange(level: Int) {
+        if (level in 1..5) {
+            _uiState.update { it.copy(sleepLevel = level) }
+        }
+    }
+
     fun onRingtoneSelected(uriStr: String?, title: String) {
         _uiState.update { it.copy(ringtoneUri = uriStr, ringtoneTitle = title) }
     }
@@ -192,7 +215,8 @@ class AddEditAlarmViewModel @Inject constructor(
                 repeatDays = state.repeatDaysString,
                 snoozeDurationMinutes = state.snoozeDurationMinutes,
                 maxSnoozeCount = 3,
-                isBedtimeReminderEnabled = state.isBedtimeReminderEnabled
+                isBedtimeReminderEnabled = state.isBedtimeReminderEnabled,
+                sleepLevel = if (state.isSleepLevelMode) state.sleepLevel else 0
             )
 
             if (state.alarmId == -1) {

@@ -91,6 +91,8 @@ fun AddEditAlarmScreen(
     onAmPmChange: (Boolean) -> Unit,
     onChallengeTypeChange: (ChallengeType) -> Unit,
     onMathDifficultyChange: (MathDifficulty) -> Unit = {},
+    onSleepLevelModeToggle: (Boolean) -> Unit = {},
+    onSleepLevelChange: (Int) -> Unit = {},
     onSelectRingtoneClick: () -> Unit = {},
     onDaysChange: (Set<Int>) -> Unit,
     onSnoozeDurationChange: (Int) -> Unit = {},
@@ -239,9 +241,13 @@ fun AddEditAlarmScreen(
                     )
 
                     2 -> StepTwoWakeMethod(
+                        isSleepLevelMode = uiState.isSleepLevelMode,
+                        sleepLevel = uiState.sleepLevel,
                         challengeType = uiState.challengeType,
                         mathDifficulty = uiState.mathDifficulty,
                         targetBarcode = uiState.targetBarcode,
+                        onSleepLevelModeToggle = onSleepLevelModeToggle,
+                        onSleepLevelChange = onSleepLevelChange,
                         onChallengeTypeChange = onChallengeTypeChange,
                         onMathDifficultyChange = onMathDifficultyChange,
                         onRegisterBarcodeClick = onRegisterBarcodeClick
@@ -343,9 +349,13 @@ fun StepOneTime(
 // ==========================================
 @Composable
 fun StepTwoWakeMethod(
+    isSleepLevelMode: Boolean,
+    sleepLevel: Int,
     challengeType: ChallengeType,
     mathDifficulty: MathDifficulty,
     targetBarcode: String?,
+    onSleepLevelModeToggle: (Boolean) -> Unit,
+    onSleepLevelChange: (Int) -> Unit,
     onChallengeTypeChange: (ChallengeType) -> Unit,
     onMathDifficultyChange: (MathDifficulty) -> Unit,
     onRegisterBarcodeClick: () -> Unit
@@ -362,128 +372,397 @@ fun StepTwoWakeMethod(
             textAlign = TextAlign.Center
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Mode Switcher: Sleep Level Meter vs Custom Pick
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Sleep Level Mode Button
+                val isSleepSelected = isSleepLevelMode
+                val sleepBg by animateColorAsState(
+                    if (isSleepSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    label = "sleepBg"
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(sleepBg)
+                        .clickable { onSleepLevelModeToggle(true) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🎛️ Sleep Meter",
+                        fontWeight = if (isSleepSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = if (isSleepSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Custom Pick Mode Button
+                val customBg by animateColorAsState(
+                    if (!isSleepSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    label = "customBg"
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(customBg)
+                        .clickable { onSleepLevelModeToggle(false) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "⚙️ Custom Pick",
+                        fontWeight = if (!isSleepSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = if (!isSleepSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 1. Math Genius Option
-        SelectableChallengeCard(
-            title = stringResource(R.string.math_challenge_title),
-            description = stringResource(R.string.math_challenge_desc),
-            icon = Icons.Default.Calculate,
-            isSelected = challengeType == ChallengeType.MATH,
-            onClick = { onChallengeTypeChange(ChallengeType.MATH) }
-        ) {
-            AnimatedVisibility(
-                visible = challengeType == ChallengeType.MATH,
-                enter = fadeIn(),
-                exit = fadeOut()
+        if (isSleepLevelMode) {
+            SleepLevelWheelPicker(
+                sleepLevel = sleepLevel,
+                onSleepLevelChange = onSleepLevelChange
+            )
+        } else {
+            // 1. Math Genius Option
+            SelectableChallengeCard(
+                title = stringResource(R.string.math_challenge_title),
+                description = stringResource(R.string.math_challenge_desc),
+                icon = Icons.Default.Calculate,
+                isSelected = challengeType == ChallengeType.MATH,
+                onClick = { onChallengeTypeChange(ChallengeType.MATH) }
             ) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    Text(
-                        text = "Difficulty",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(42.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                AnimatedVisibility(
+                    visible = challengeType == ChallengeType.MATH,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        Text(
+                            text = "Difficulty",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
                         ) {
-                            MathDifficulty.entries.forEach { diff ->
-                                val isDiffSelected = mathDifficulty == diff
-                                val bg by animateColorAsState(
-                                    if (isDiffSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                    label = "diffBg"
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(bg)
-                                        .clickable { onMathDifficultyChange(diff) }
-                                        .padding(vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = diff.displayName,
-                                        fontWeight = if (isDiffSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 13.sp,
-                                        textAlign = TextAlign.Center,
-                                        color = if (isDiffSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            Row(
+                                modifier = Modifier.padding(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                MathDifficulty.entries.forEach { diff ->
+                                    val isDiffSelected = mathDifficulty == diff
+                                    val bg by animateColorAsState(
+                                        if (isDiffSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        label = "diffBg"
                                     )
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(bg)
+                                            .clickable { onMathDifficultyChange(diff) }
+                                            .padding(vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = diff.displayName,
+                                            fontWeight = if (isDiffSelected) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 13.sp,
+                                            textAlign = TextAlign.Center,
+                                            color = if (isDiffSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // 2. Barcode Scan Option
-        SelectableChallengeCard(
-            title = stringResource(R.string.barcode_challenge_title),
-            description = if (targetBarcode != null) "Barcode registered successfully!" else stringResource(
-                R.string.barcode_challenge_desc
-            ),
-            icon = Icons.Default.QrCodeScanner,
-            isSelected = challengeType == ChallengeType.BARCODE,
-            onClick = { onChallengeTypeChange(ChallengeType.BARCODE) }
-        ) {
-            AnimatedVisibility(
-                visible = challengeType == ChallengeType.BARCODE,
-                enter = fadeIn(),
-                exit = fadeOut()
+            // 2. Barcode Scan Option
+            SelectableChallengeCard(
+                title = stringResource(R.string.barcode_challenge_title),
+                description = if (targetBarcode != null) "Barcode registered successfully!" else stringResource(
+                    R.string.barcode_challenge_desc
+                ),
+                icon = Icons.Default.QrCodeScanner,
+                isSelected = challengeType == ChallengeType.BARCODE,
+                onClick = { onChallengeTypeChange(ChallengeType.BARCODE) }
             ) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    Button(
-                        onClick = onRegisterBarcodeClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (targetBarcode != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primary,
-                            contentColor = if (targetBarcode != null) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimary
-                        )
+                AnimatedVisibility(
+                    visible = challengeType == ChallengeType.BARCODE,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        Button(
+                            onClick = onRegisterBarcodeClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (targetBarcode != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primary,
+                                contentColor = if (targetBarcode != null) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text(
+                                text = if (targetBarcode != null) "Rescan / Change Barcode" else "Set up barcode",
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 3. Shake Phone Option
+            SelectableChallengeCard(
+                title = "Shake Phone",
+                description = "Shake to dismiss the alarm",
+                icon = Icons.Default.Vibration,
+                isSelected = challengeType == ChallengeType.SHAKE,
+                onClick = { onChallengeTypeChange(ChallengeType.SHAKE) }
+            ) {
+                AnimatedVisibility(
+                    visible = challengeType == ChallengeType.SHAKE,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Text(
+                        text = "Shake your phone vigorously to dismiss the alarm when it rings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ==========================================
+// SLEEP LEVEL WHEEL PICKER (1 TO 5)
+// ==========================================
+@Composable
+fun SleepLevelWheelPicker(
+    sleepLevel: Int,
+    onSleepLevelChange: (Int) -> Unit
+) {
+    val levels = listOf(1, 2, 3, 4, 5)
+    val levelTitles = mapOf(
+        1 to "Level 1: Gentle Nudge",
+        2 to "Level 2: Standard Alarm",
+        3 to "Level 3: Deep Rest",
+        4 to "Level 4: Double Trouble",
+        5 to "Level 5: Nuclear Wake"
+    )
+    val levelIcons = mapOf(1 to "💤", 2 to "😴", 3 to "🛌", 4 to "⏰", 5 to "🚀")
+    val levelSummaries = mapOf(
+        1 to "Light sleeper • 10 Shakes or Easy Math",
+        2 to "Normal sleeper • 25 Shakes or Medium Math",
+        3 to "Heavy sleeper • 35 Shakes or Hard Math",
+        4 to "Deep sleeper • 15 Shakes ➔ Easy Math",
+        5 to "Extreme sleeper • 30 Shakes ➔ Hard Math"
+    )
+
+    val count = levels.size
+    val infiniteCount = count * 20
+    val initialIndex = remember(levels) {
+        val base = (infiniteCount / 2) - ((infiniteCount / 2) % count)
+        val itemOffset = levels.indexOf(sleepLevel).coerceAtLeast(0)
+        (base + itemOffset - 1).coerceAtLeast(0)
+    }
+
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    val snapBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) null
+            else {
+                val viewportCenter =
+                    (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+                visibleItems.minByOrNull { abs((it.offset + it.size / 2) - viewportCenter) }
+            }
+        }
+            .filterNotNull()
+            .distinctUntilChangedBy { it.index }
+            .collect { centerItem ->
+                val actualValue = levels[centerItem.index % count]
+                if (actualValue != sleepLevel) {
+                    onSleepLevelChange(actualValue)
+                }
+            }
+    }
+
+    LaunchedEffect(sleepLevel) {
+        if (!listState.isScrollInProgress) {
+            val currentCenterIndex = listState.firstVisibleItemIndex + 1
+            val currentCenterValue = levels[currentCenterIndex % count]
+            if (currentCenterValue != sleepLevel) {
+                val base = (listState.firstVisibleItemIndex / count) * count
+                val targetOffset = levels.indexOf(sleepLevel).coerceAtLeast(0)
+                val targetIndex = (base + targetOffset - 1).coerceAtLeast(0)
+                listState.scrollToItem(targetIndex)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Select Sleep Level",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Rotate wheel to choose your sleep depth",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+        )
+
+        // Wheel Drum Picker
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Selection Center Bar Highlight
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+            ) {}
+
+            LazyColumn(
+                state = listState,
+                flingBehavior = snapBehavior,
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                contentPadding = PaddingValues(vertical = 51.dp)
+            ) {
+                items(
+                    count = infiniteCount,
+                    key = { index -> index }
+                ) { index ->
+                    val lvl = levels[index % count]
+                    val isSelected = lvl == sleepLevel
+
+                    val alpha = if (isSelected) 1f else 0.35f
+                    val scale = if (isSelected) 1.05f else 0.85f
+
+                    Row(
+                        modifier = Modifier
+                            .height(48.dp)
+                            .fillMaxWidth(0.85f)
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = if (targetBarcode != null) "Rescan / Change Barcode" else "Set up barcode",
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            text = levelIcons[lvl] ?: "💤",
+                            fontSize = 20.sp,
+                            modifier = Modifier.padding(end = 10.dp)
+                        )
+                        Text(
+                            text = levelTitles[lvl] ?: "Level $lvl",
+                            fontSize = 15.sp,
+                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .alpha(alpha)
+                                .scale(scale)
                         )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // 3. Shake Phone Option
-        SelectableChallengeCard(
-            title = "Shake Phone",
-            description = "Shake to dismiss the alarm",
-            icon = Icons.Default.Vibration,
-            isSelected = challengeType == ChallengeType.SHAKE,
-            onClick = { onChallengeTypeChange(ChallengeType.SHAKE) }
+        // Clean & Minimal Summary Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            AnimatedVisibility(
-                visible = challengeType == ChallengeType.SHAKE,
-                enter = fadeIn(),
-                exit = fadeOut()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "Shake your phone vigorously to dismiss the alarm when it rings.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = levelIcons[sleepLevel] ?: "💤",
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Challenge Summary",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = levelSummaries[sleepLevel] ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

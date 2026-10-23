@@ -88,6 +88,8 @@ class AlarmDismissActivity : ComponentActivity() {
                             shakeProgress = uiState.shakeProgress,
                             currentShakes = uiState.currentShakes,
                             requiredShakes = uiState.requiredShakes,
+                            currentStage = uiState.currentStage,
+                            totalStages = uiState.totalStages,
                             onAnswerChange = viewModel::onAnswerChange,
                             onBarcodeScanned = { scannedBarcode ->
                                 viewModel.onBarcodeScanned(scannedBarcode) {}

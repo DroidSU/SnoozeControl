@@ -25,6 +25,12 @@ import javax.inject.Inject
 
 data class AlarmDismissUiState(
     val alarmId: Int = -1,
+    val sleepLevel: Int = 0,
+    val currentStage: Int = 1,
+    val totalStages: Int = 1,
+    val stage1Completed: Boolean = false,
+    val stage1Type: ChallengeType = ChallengeType.NONE,
+    val stage2Type: ChallengeType = ChallengeType.NONE,
     val challengeType: ChallengeType = ChallengeType.NONE,
     val equation: String = "",
     val correctAnswer: Int = 0,
@@ -86,37 +92,135 @@ class AlarmDismissViewModel @Inject constructor(
                 val snoozeDur = alarm.snoozeDurationMinutes
                 val maxSnooze = alarm.maxSnoozeCount
                 val currentSnooze = alarm.snoozeCount
+                val sleepLvl = alarm.sleepLevel
 
-                when (alarm.challengeType) {
-                    ChallengeType.MATH -> generateMathProblem(
-                        alarmId,
-                        snoozeDur,
-                        maxSnooze,
-                        currentSnooze,
-                        alarm.mathDifficulty
-                    )
-                    ChallengeType.BARCODE -> {
-                        _uiState.update {
-                            it.copy(
-                                alarmId = alarmId,
-                                challengeType = ChallengeType.BARCODE,
-                                targetBarcode = alarm.targetBarcode,
-                                snoozeDurationMinutes = snoozeDur,
-                                maxSnoozeCount = maxSnooze,
-                                snoozeCount = currentSnooze
+                if (sleepLvl > 0) {
+                    when (sleepLvl) {
+                        1 -> {
+                            _uiState.update {
+                                it.copy(
+                                    alarmId = alarmId,
+                                    sleepLevel = 1,
+                                    currentStage = 1,
+                                    totalStages = 1,
+                                    challengeType = ChallengeType.SHAKE,
+                                    requiredShakes = 10,
+                                    snoozeDurationMinutes = snoozeDur,
+                                    maxSnoozeCount = maxSnooze,
+                                    snoozeCount = currentSnooze
+                                )
+                            }
+                        }
+
+                        2 -> {
+                            _uiState.update {
+                                it.copy(
+                                    alarmId = alarmId,
+                                    sleepLevel = 2,
+                                    currentStage = 1,
+                                    totalStages = 1,
+                                    challengeType = ChallengeType.SHAKE,
+                                    requiredShakes = 25,
+                                    snoozeDurationMinutes = snoozeDur,
+                                    maxSnoozeCount = maxSnooze,
+                                    snoozeCount = currentSnooze
+                                )
+                            }
+                        }
+
+                        3 -> {
+                            _uiState.update {
+                                it.copy(
+                                    alarmId = alarmId,
+                                    sleepLevel = 3,
+                                    currentStage = 1,
+                                    totalStages = 1,
+                                    snoozeDurationMinutes = snoozeDur,
+                                    maxSnoozeCount = maxSnooze,
+                                    snoozeCount = currentSnooze
+                                )
+                            }
+                            generateMathProblem(
+                                alarmId,
+                                snoozeDur,
+                                maxSnooze,
+                                currentSnooze,
+                                MathDifficulty.HARD
                             )
                         }
-                    }
 
-                    ChallengeType.SHAKE, ChallengeType.NONE -> {
-                        _uiState.update {
-                            it.copy(
-                                alarmId = alarmId,
-                                challengeType = alarm.challengeType,
-                                snoozeDurationMinutes = snoozeDur,
-                                maxSnoozeCount = maxSnooze,
-                                snoozeCount = currentSnooze
-                            )
+                        4 -> {
+                            // Level 4: Stage 1 = 15 Shakes -> Stage 2 = Easy Math
+                            _uiState.update {
+                                it.copy(
+                                    alarmId = alarmId,
+                                    sleepLevel = 4,
+                                    currentStage = 1,
+                                    totalStages = 2,
+                                    stage1Type = ChallengeType.SHAKE,
+                                    stage2Type = ChallengeType.MATH,
+                                    challengeType = ChallengeType.SHAKE,
+                                    requiredShakes = 15,
+                                    snoozeDurationMinutes = snoozeDur,
+                                    maxSnoozeCount = maxSnooze,
+                                    snoozeCount = currentSnooze
+                                )
+                            }
+                        }
+
+                        5 -> {
+                            // Level 5: Stage 1 = 30 Shakes -> Stage 2 = Hard Math
+                            _uiState.update {
+                                it.copy(
+                                    alarmId = alarmId,
+                                    sleepLevel = 5,
+                                    currentStage = 1,
+                                    totalStages = 2,
+                                    stage1Type = ChallengeType.SHAKE,
+                                    stage2Type = ChallengeType.MATH,
+                                    challengeType = ChallengeType.SHAKE,
+                                    requiredShakes = 30,
+                                    snoozeDurationMinutes = snoozeDur,
+                                    maxSnoozeCount = maxSnooze,
+                                    snoozeCount = currentSnooze
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Custom / Manual Mode
+                    when (alarm.challengeType) {
+                        ChallengeType.MATH -> generateMathProblem(
+                            alarmId,
+                            snoozeDur,
+                            maxSnooze,
+                            currentSnooze,
+                            alarm.mathDifficulty
+                        )
+
+                        ChallengeType.BARCODE -> {
+                            _uiState.update {
+                                it.copy(
+                                    alarmId = alarmId,
+                                    challengeType = ChallengeType.BARCODE,
+                                    targetBarcode = alarm.targetBarcode,
+                                    snoozeDurationMinutes = snoozeDur,
+                                    maxSnoozeCount = maxSnooze,
+                                    snoozeCount = currentSnooze
+                                )
+                            }
+                        }
+
+                        ChallengeType.SHAKE, ChallengeType.NONE -> {
+                            _uiState.update {
+                                it.copy(
+                                    alarmId = alarmId,
+                                    challengeType = alarm.challengeType,
+                                    snoozeDurationMinutes = snoozeDur,
+                                    maxSnoozeCount = maxSnooze,
+                                    snoozeCount = currentSnooze
+                                )
+                            }
                         }
                     }
                 }
@@ -237,8 +341,25 @@ class AlarmDismissViewModel @Inject constructor(
         }
 
         if (newProgress >= 1f) {
-            resetSnoozeCountAndDismiss(currentState.alarmId)
-            onSuccess()
+            if (currentState.totalStages > 1 && currentState.currentStage == 1) {
+                // Advance to Stage 2 (Math Challenge)
+                _uiState.update {
+                    it.copy(
+                        currentStage = 2,
+                        stage1Completed = true
+                    )
+                }
+                generateMathProblem(
+                    currentState.alarmId,
+                    currentState.snoozeDurationMinutes,
+                    currentState.maxSnoozeCount,
+                    currentState.snoozeCount,
+                    if (currentState.sleepLevel == 5) MathDifficulty.HARD else MathDifficulty.EASY
+                )
+            } else {
+                resetSnoozeCountAndDismiss(currentState.alarmId)
+                onSuccess()
+            }
         }
     }
 

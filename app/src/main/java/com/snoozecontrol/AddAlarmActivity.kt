@@ -103,6 +103,7 @@ class AddAlarmActivity : ComponentActivity() {
             intent.getStringExtra(EXTRA_ALARM_RINGTONE_TITLE) ?: "Default Alarm Sound"
         val alarmRepeatDays = intent.getStringExtra(EXTRA_ALARM_REPEAT_DAYS) ?: ""
         val alarmSnoozeDuration = intent.getIntExtra(EXTRA_ALARM_SNOOZE_DURATION, 5)
+        val alarmSleepLevel = intent.getIntExtra(EXTRA_ALARM_SLEEP_LEVEL, 0)
 
         val initialAlarm = if (alarmId != -1 && alarmHour != -1) {
             AlarmItem(
@@ -124,7 +125,8 @@ class AddAlarmActivity : ComponentActivity() {
                 ringtoneUri = alarmRingtoneUri,
                 ringtoneTitle = alarmRingtoneTitle,
                 repeatDays = alarmRepeatDays,
-                snoozeDurationMinutes = alarmSnoozeDuration
+                snoozeDurationMinutes = alarmSnoozeDuration,
+                sleepLevel = alarmSleepLevel
             )
         } else null
 
@@ -161,6 +163,8 @@ class AddAlarmActivity : ComponentActivity() {
                                 onAmPmChange = viewModel::onAmPmChange,
                                 onChallengeTypeChange = viewModel::onChallengeTypeChange,
                                 onMathDifficultyChange = viewModel::onMathDifficultyChange,
+                                onSleepLevelModeToggle = viewModel::onSleepLevelModeToggle,
+                                onSleepLevelChange = viewModel::onSleepLevelChange,
                                 onSelectRingtoneClick = { launchRingtonePicker(uiState.ringtoneUri) },
                                 onDaysChange = viewModel::onDaysChange,
                                 onSnoozeDurationChange = viewModel::onSnoozeDurationChange,
@@ -230,6 +234,7 @@ class AddAlarmActivity : ComponentActivity() {
         const val EXTRA_ALARM_RINGTONE_TITLE = "extra_alarm_ringtone_title"
         const val EXTRA_ALARM_REPEAT_DAYS = "extra_alarm_repeat_days"
         const val EXTRA_ALARM_SNOOZE_DURATION = "extra_alarm_snooze_duration"
+        const val EXTRA_ALARM_SLEEP_LEVEL = "extra_alarm_sleep_level"
 
         fun createIntent(
             context: Context,
@@ -247,6 +252,7 @@ class AddAlarmActivity : ComponentActivity() {
                     putExtra(EXTRA_ALARM_RINGTONE_TITLE, alarm.ringtoneTitle)
                     putExtra(EXTRA_ALARM_REPEAT_DAYS, alarm.repeatDays)
                     putExtra(EXTRA_ALARM_SNOOZE_DURATION, alarm.snoozeDurationMinutes)
+                    putExtra(EXTRA_ALARM_SLEEP_LEVEL, alarm.sleepLevel)
                 } else {
                     putExtra(EXTRA_ALARM_ID, -1)
                 }
