@@ -3,6 +3,7 @@ package com.snoozecontrol.ui
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -57,53 +58,86 @@ import androidx.compose.ui.unit.sp
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.Quote
 import com.snoozecontrol.util.WeatherInfo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-private object TtsManager {
-    fun createTts(
-        context: Context,
-        onSpeakingChange: (Boolean) -> Unit
-    ): TextToSpeech? {
-        var textToSpeech: TextToSpeech? = null
-        textToSpeech = TextToSpeech(context) { status ->
+object TtsManager {
+    private var textToSpeech: TextToSpeech? = null
+    private var isReady = false
+    private var onSpeakingListener: ((Boolean) -> Unit)? = null
+
+    fun prewarm(context: Context) {
+        if (textToSpeech != null) return
+        val appContext = context.applicationContext
+        textToSpeech = TextToSpeech(appContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
+                isReady = true
                 textToSpeech?.language = Locale.US
                 textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
-                        onSpeakingChange(true)
+                        onSpeakingListener?.invoke(true)
                     }
 
                     override fun onDone(utteranceId: String?) {
-                        onSpeakingChange(false)
+                        onSpeakingListener?.invoke(false)
                     }
 
                     @Deprecated("Deprecated in Java")
                     override fun onError(utteranceId: String?) {
-                        onSpeakingChange(false)
+                        onSpeakingListener?.invoke(false)
                     }
                 })
             }
         }
-        return textToSpeech
     }
 
-    fun speak(tts: Any?, text: String) {
-        (tts as? TextToSpeech)?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "briefing_id")
+    fun setSpeakingListener(listener: ((Boolean) -> Unit)?) {
+        onSpeakingListener = listener
     }
 
-    fun stop(tts: Any?) {
-        (tts as? TextToSpeech)?.stop()
+    fun isReady(): Boolean = isReady && textToSpeech != null
+
+    fun speak(text: String) {
+        if (textToSpeech != null) {
+            try {
+                textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "briefing_id")
+            } catch (e: Exception) {
+                Log.e("TtsManager", "Error speaking text", e)
+            }
+        }
     }
 
-    fun shutdown(tts: Any?) {
-        val t = tts as? TextToSpeech
-        t?.stop()
-        t?.shutdown()
+    fun stop() {
+        val tts = textToSpeech
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                tts?.stop()
+            } catch (e: Exception) {
+                Log.e("TtsManager", "Error stopping TTS", e)
+            }
+        }
+    }
+
+    fun shutdown() {
+        onSpeakingListener = null
+        val ttsToShutdown = textToSpeech
+        textToSpeech = null
+        isReady = false
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                ttsToShutdown?.stop()
+                ttsToShutdown?.shutdown()
+            } catch (e: Exception) {
+                Log.e("TtsManager", "Error shutting down TTS", e)
+            }
+        }
     }
 }
 
@@ -173,12 +207,10 @@ fun MorningDashboardScreen(
     }
 
     // Text To Speech Morning Briefing state
-    var tts by remember { mutableStateOf<Any?>(null) }
     var isSpeaking by remember { mutableStateOf(false) }
     var hasAutoPlayed by remember { mutableStateOf(false) }
 
     val startBriefing = remember(
-        tts,
         weatherInfo,
         quote,
         timeGreeting,
@@ -187,7 +219,7 @@ fun MorningDashboardScreen(
         isInPreview
     ) {
         {
-            if (!isInPreview && tts != null) {
+            if (!isInPreview) {
                 val weatherBriefing = if (weatherInfo != null)
                     "The current weather is ${weatherInfo.conditionText} with a temperature of ${weatherInfo.temperatureCelsius} degrees Celsius."
                 else
@@ -195,7 +227,7 @@ fun MorningDashboardScreen(
                 val textToSpeak =
                     "$timeGreeting $actualUserName! Today is $currentDateText. $weatherBriefing Here is your daily quote: ${quote.text}. Have a wonderful day!"
 
-                TtsManager.speak(tts, textToSpeak)
+                TtsManager.speak(textToSpeak)
             }
         }
     }
@@ -204,28 +236,28 @@ fun MorningDashboardScreen(
         if (isInPreview) {
             onDispose { }
         } else {
-            val textToSpeech = TtsManager.createTts(context) { speaking ->
+            TtsManager.prewarm(context)
+            TtsManager.setSpeakingListener { speaking ->
                 isSpeaking = speaking
             }
-            tts = textToSpeech
 
             onDispose {
-                TtsManager.shutdown(textToSpeech)
+                TtsManager.setSpeakingListener(null)
             }
         }
     }
 
-    LaunchedEffect(tts, weatherInfo, isWeatherLoading, isInPreview) {
-        if (!isInPreview && tts != null && (!isWeatherLoading || weatherInfo != null) && !hasAutoPlayed) {
+    LaunchedEffect(weatherInfo, isWeatherLoading, isInPreview) {
+        if (!isInPreview && !hasAutoPlayed) {
             hasAutoPlayed = true
             startBriefing()
         }
     }
 
     val toggleBriefing = {
-        if (!isInPreview && tts != null) {
+        if (!isInPreview) {
             if (isSpeaking) {
-                TtsManager.stop(tts)
+                TtsManager.stop()
                 isSpeaking = false
             } else {
                 startBriefing()
@@ -385,7 +417,7 @@ fun MorningDashboardScreen(
                 Button(
                     onClick = {
                         if (!isInPreview) {
-                            TtsManager.stop(tts)
+                            TtsManager.stop()
                         }
                         onStartDayClick()
                     },

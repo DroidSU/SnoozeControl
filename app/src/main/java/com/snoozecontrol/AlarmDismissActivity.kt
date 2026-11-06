@@ -12,6 +12,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -19,11 +20,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.service.AlarmService
 import com.snoozecontrol.ui.AlarmDismissScreen
 import com.snoozecontrol.ui.MorningDashboardScreen
+import com.snoozecontrol.ui.TtsManager
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
+import com.snoozecontrol.util.PermissionManager
 import com.snoozecontrol.util.ShakeDetector
 import com.snoozecontrol.viewmodel.AlarmDismissViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -35,11 +40,22 @@ class AlarmDismissActivity : ComponentActivity() {
     private var sensorManager: SensorManager? = null
     private var shakeDetector: ShakeDetector? = null
 
+    private val hasCameraPermission = mutableStateOf(false)
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission.value = isGranted
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        TtsManager.prewarm(this)
         setupLockScreenFlags()
         enableEdgeToEdge()
+
+        hasCameraPermission.value = PermissionManager.hasCameraPermission(this)
 
         sensorManager = getSystemService(SENSOR_SERVICE) as? SensorManager
         shakeDetector = ShakeDetector {
@@ -52,6 +68,16 @@ class AlarmDismissActivity : ComponentActivity() {
         setContent {
             val uiState by viewModel.uiState.collectAsState()
             val weatherInfo by viewModel.weatherInfo.collectAsState()
+
+            LaunchedEffect(uiState.challengeType) {
+                if (uiState.challengeType == ChallengeType.BARCODE) {
+                    if (!PermissionManager.hasCameraPermission(this@AlarmDismissActivity)) {
+                        cameraPermissionLauncher.launch(PermissionManager.getCameraPermission())
+                    } else {
+                        hasCameraPermission.value = true
+                    }
+                }
+            }
 
             LaunchedEffect(uiState.isDismissed) {
                 if (uiState.isDismissed) {
@@ -120,6 +146,13 @@ class AlarmDismissActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         shakeDetector?.let { sensorManager?.unregisterListener(it) }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) {
+            TtsManager.shutdown()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

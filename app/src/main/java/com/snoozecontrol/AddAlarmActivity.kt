@@ -17,6 +17,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -44,12 +45,12 @@ class AddAlarmActivity : ComponentActivity() {
         }
     }
 
-    private var pendingNavigateToBarcode = false
+    private val shouldNavigateToBarcode = mutableStateOf(false)
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            pendingNavigateToBarcode = false
+            shouldNavigateToBarcode.value = true
         }
     }
 
@@ -154,6 +155,13 @@ class AddAlarmActivity : ComponentActivity() {
                                 }
                             }
 
+                            LaunchedEffect(shouldNavigateToBarcode.value) {
+                                if (shouldNavigateToBarcode.value) {
+                                    shouldNavigateToBarcode.value = false
+                                    navController.navigate("register_barcode")
+                                }
+                            }
+
                             AddEditAlarmScreen(
                                 uiState = uiState,
                                 onHourChange = viewModel::onHourChange,
@@ -193,7 +201,6 @@ class AddAlarmActivity : ComponentActivity() {
                                 },
                                 onRegisterBarcodeClick = {
                                     if (!PermissionManager.hasCameraPermission(this@AddAlarmActivity)) {
-                                        pendingNavigateToBarcode = true
                                         cameraPermissionLauncher.launch(PermissionManager.getCameraPermission())
                                     } else {
                                         navController.navigate("register_barcode")

@@ -1,6 +1,7 @@
 package com.snoozecontrol.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,10 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -63,10 +69,12 @@ fun BarcodeRegistrationScreen(
     onBack: () -> Unit
 ) {
     var detectedBarcode by remember { mutableStateOf<String?>(null) }
+    var isTorchEnabled by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (detectedBarcode == null) {
             BarcodeScannerView(
+                isTorchEnabled = isTorchEnabled,
                 onBarcodeDetected = { detectedBarcode = it },
                 modifier = Modifier.fillMaxSize()
             )
@@ -108,115 +116,212 @@ fun BarcodeRegistrationScreen(
                     .padding(padding)
             ) {
                 if (detectedBarcode == null) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(24.dp),
+                    Column(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 80.dp, start = 24.dp, end = 24.dp)
+                            .padding(bottom = 60.dp, start = 24.dp, end = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = stringResource(R.string.scan_barcode_instruction),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White,
-                            modifier = Modifier.padding(20.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Surface(
+                            onClick = { isTorchEnabled = !isTorchEnabled },
+                            color = if (isTorchEnabled) MaterialTheme.colorScheme.primaryContainer else Color.Black.copy(
+                                alpha = 0.65f
+                            ),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(
+                                    alpha = 0.5f
+                                )
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                                    contentDescription = null,
+                                    tint = if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isTorchEnabled) "Flashlight ON 💡" else "Flashlight OFF ⚡",
+                                    color = if (isTorchEnabled) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(R.string.scan_barcode_instruction),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.White,
+                                modifier = Modifier.padding(20.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 } else {
-                    // Confirmation UI
+                    // Beautified Confirmation UI
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
-                            .padding(24.dp),
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Surface(
                             color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(28.dp),
                             modifier = Modifier.fillMaxWidth(),
+                            shadowElevation = 12.dp,
                             tonalElevation = 6.dp
                         ) {
                             Column(
-                                modifier = Modifier.padding(18.dp),
+                                modifier = Modifier.padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(64.dp)
                                 ) {
-                                    Text(
-                                        text = "BARCODE SCANNED",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(
-                                            horizontal = 10.dp,
-                                            vertical = 4.dp
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(36.dp)
                                         )
-                                    )
+                                    }
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 Text(
-                                    text = detectedBarcode!!,
+                                    text = "Barcode Registered!",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = TextAlign.Center
                                 )
 
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = "Target object saved successfully. You will scan this object to turn off your alarm.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+
                                 Spacer(modifier = Modifier.height(16.dp))
+
+                                val maskedBarcode = if (detectedBarcode!!.length > 4) {
+                                    "•••• " + detectedBarcode!!.takeLast(4)
+                                } else {
+                                    detectedBarcode!!
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(
+                                            horizontal = 14.dp,
+                                            vertical = 8.dp
+                                        ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.QrCodeScanner,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = "Target: $maskedBarcode",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(24.dp))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     OutlinedButton(
                                         onClick = { detectedBarcode = null },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(46.dp),
+                                            .height(48.dp),
                                         contentPadding = PaddingValues(
-                                            horizontal = 8.dp,
-                                            vertical = 6.dp
+                                            horizontal = 12.dp,
+                                            vertical = 8.dp
                                         ),
-                                        shape = RoundedCornerShape(14.dp)
+                                        shape = RoundedCornerShape(16.dp)
                                     ) {
                                         Icon(
-                                            Icons.Default.Refresh,
+                                            imageVector = Icons.Default.Refresh,
                                             contentDescription = null,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Retake", fontWeight = FontWeight.Bold, maxLines = 1)
+                                        Text(
+                                            text = "Rescan",
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
                                     }
 
                                     Button(
                                         onClick = { onBarcodeScanned(detectedBarcode!!) },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(46.dp),
+                                            .height(48.dp),
                                         contentPadding = PaddingValues(
-                                            horizontal = 8.dp,
-                                            vertical = 6.dp
+                                            horizontal = 12.dp,
+                                            vertical = 8.dp
                                         ),
-                                        shape = RoundedCornerShape(14.dp)
+                                        shape = RoundedCornerShape(16.dp)
                                     ) {
                                         Icon(
-                                            Icons.Default.Check,
+                                            imageVector = Icons.Default.Check,
                                             contentDescription = null,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Confirm", fontWeight = FontWeight.Bold, maxLines = 1)
+                                        Text(
+                                            text = "Confirm",
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1
+                                        )
                                     }
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }

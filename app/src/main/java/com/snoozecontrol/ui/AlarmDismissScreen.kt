@@ -39,6 +39,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -51,10 +53,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -110,10 +116,13 @@ fun AlarmDismissScreen(
         label = "scaleAnim"
     )
 
+    var isTorchEnabled by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         if (challengeType == ChallengeType.BARCODE) {
             Box(modifier = Modifier.fillMaxSize()) {
                 BarcodeScannerView(
+                    isTorchEnabled = isTorchEnabled,
                     onBarcodeDetected = onBarcodeScanned,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -170,33 +179,75 @@ fun AlarmDismissScreen(
                         }
                     }
 
-                    if (canSnooze) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Surface(
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                            onClick = { isTorchEnabled = !isTorchEnabled },
+                            color = if (isTorchEnabled) MaterialTheme.colorScheme.primaryContainer else Color.Black.copy(
+                                alpha = 0.7f
+                            ),
                             shape = RoundedCornerShape(20.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp),
-                            onClick = onSnoozeClick
+                            border = BorderStroke(
+                                1.dp,
+                                if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(
+                                    alpha = 0.5f
+                                )
+                            ),
+                            modifier = Modifier.padding(bottom = 12.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
-                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Alarm,
+                                    imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Snooze (+${snoozeDurationMinutes}m) • $remainingSnoozes left",
+                                    text = if (isTorchEnabled) "Flashlight ON 💡" else "Flashlight OFF ⚡",
+                                    color = if (isTorchEnabled) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    fontSize = 14.sp
                                 )
+                            }
+                        }
+
+                        if (canSnooze) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                                onClick = onSnoozeClick
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(
+                                        horizontal = 20.dp,
+                                        vertical = 14.dp
+                                    ),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Alarm,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "Snooze (+${snoozeDurationMinutes}m) • $remainingSnoozes left",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
