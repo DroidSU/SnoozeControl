@@ -183,6 +183,9 @@ class AddEditAlarmViewModel @Inject constructor(
     }
 
     fun onChallengeTypeChange(type: ChallengeType) {
+        if (type == ChallengeType.SHAKE && !_uiState.value.isProUser) {
+            return
+        }
         _uiState.update { it.copy(challengeType = type) }
     }
 

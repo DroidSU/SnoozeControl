@@ -483,13 +483,13 @@ fun StepTwoWakeMethod(
                             }
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (isProUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                                color = if (isProUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer
                             ) {
                                 Text(
                                     text = if (isProUser) "PRO ✓" else "PRO 🔒",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = if (isProUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary,
+                                    color = if (isProUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
@@ -544,19 +544,79 @@ fun StepTwoWakeMethod(
             description = "Shake to dismiss the alarm",
             icon = Icons.Default.Vibration,
             isSelected = challengeType == ChallengeType.SHAKE,
-            onClick = { onChallengeTypeChange(ChallengeType.SHAKE) }
+            badgeText = if (isProUser) "PRO ✓" else "PRO 🔒",
+            isProBadge = isProUser,
+            onClick = {
+                if (!isProUser) {
+                    onOpenPaywall()
+                } else {
+                    onChallengeTypeChange(ChallengeType.SHAKE)
+                }
+            }
         ) {
             AnimatedVisibility(
                 visible = challengeType == ChallengeType.SHAKE,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                Text(
-                    text = "Shake your phone vigorously to dismiss the alarm when it rings.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    Text(
+                        text = "Shake your phone vigorously to dismiss the alarm when it rings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!isProUser) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            onClick = onOpenPaywall,
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.WorkspacePremium,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Unlock Pro for Shake Challenge",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer
+                                ) {
+                                    Text(
+                                        text = "PRO 🔒",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.padding(
+                                            horizontal = 8.dp,
+                                            vertical = 4.dp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -568,6 +628,8 @@ fun SelectableChallengeCard(
     description: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
+    badgeText: String? = null,
+    isProBadge: Boolean = false,
     onClick: () -> Unit,
     content: @Composable (() -> Unit)? = null
 ) {
@@ -628,6 +690,22 @@ fun SelectableChallengeCard(
                             text = description,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (badgeText != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isProBadge) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Text(
+                            text = badgeText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isProBadge) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }

@@ -102,6 +102,7 @@ fun AlarmDismissScreen(
     isDebugMode: Boolean = false,
     onAnswerChange: (String) -> Unit,
     onBarcodeScanned: (String) -> Unit,
+    onBarcodeScanFailed: () -> Unit = {},
     onDismissClick: () -> Unit,
     onEmergencyBypassClick: () -> Unit = {},
     onShakeFallbackClick: () -> Unit = {},
@@ -266,6 +267,88 @@ fun AlarmDismissScreen(
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
+                            }
+                        }
+
+                        // Emergency Failsafe for Barcode Mode (after 2-3 unrecognized scans)
+                        if (isProUser && failedAttempts >= 2) {
+                            Surface(
+                                onClick = { showEmergencyDialog = true },
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(
+                                        horizontal = 20.dp,
+                                        vertical = 14.dp
+                                    ),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = stringResource(R.string.emergency_bypass_button),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        } else if (!isProUser && failedAttempts >= 2) {
+                            Surface(
+                                onClick = { showFreeShakeDialog = true },
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(
+                                        horizontal = 20.dp,
+                                        vertical = 14.dp
+                                    ),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Emergency Shake Bypass (Free)",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+                            }
+                        } else if (failedAttempts < 2) {
+                            Surface(
+                                onClick = onBarcodeScanFailed,
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            ) {
+                                Text(
+                                    text = "Having trouble scanning?",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
                             }
                         }
                     }
@@ -782,7 +865,7 @@ fun AlarmDismissScreen(
                 title = { Text(text = "Emergency Shake Fallback", fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
-                        Text(text = "Stuck on this math challenge?")
+                        Text(text = "Stuck on this wake-up challenge?")
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = "Free users can shake the phone to trigger a free emergency bypass, or upgrade to Pro for instant 1-tap bypasses.")
                     }

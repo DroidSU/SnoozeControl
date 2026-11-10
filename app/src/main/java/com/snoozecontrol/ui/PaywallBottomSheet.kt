@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -160,6 +161,14 @@ fun PaywallBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Compact Feature List (Scannable Bullet Points)
+            CompactFeatureRow(
+                icon = Icons.Default.Vibration,
+                title = "Shake Phone Challenge",
+                subtitle = "Vigorous shake motion to dismiss alarm"
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             CompactFeatureRow(
                 icon = Icons.Default.Calculate,
                 title = "Quick Calc Sheet",

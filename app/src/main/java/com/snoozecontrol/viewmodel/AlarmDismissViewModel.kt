@@ -137,7 +137,8 @@ class AlarmDismissViewModel @Inject constructor(
                                 targetBarcode = alarm.targetBarcode,
                                 snoozeDurationMinutes = snoozeDur,
                                 maxSnoozeCount = maxSnooze,
-                                snoozeCount = currentSnooze
+                                snoozeCount = currentSnooze,
+                                failedAttempts = 0
                             )
                         }
                     }
@@ -362,9 +363,18 @@ class AlarmDismissViewModel @Inject constructor(
                         errorMessage = getApplication<Application>().getString(
                             R.string.error_wrong_barcode,
                             scannedClean
-                        )
+                        ),
+                        failedAttempts = it.failedAttempts + 1
                     )
                 }
+            }
+        }
+    }
+
+    fun onBarcodeScanFailed() {
+        if (_uiState.value.challengeType == ChallengeType.BARCODE) {
+            _uiState.update {
+                it.copy(failedAttempts = it.failedAttempts + 1)
             }
         }
     }

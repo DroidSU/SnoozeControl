@@ -121,6 +121,7 @@ class AlarmDismissActivity : ComponentActivity() {
                             onBarcodeScanned = { scannedBarcode ->
                                 viewModel.onBarcodeScanned(scannedBarcode) {}
                             },
+                            onBarcodeScanFailed = viewModel::onBarcodeScanFailed,
                             onDismissClick = {
                                 viewModel.onDismissClick()
                             },
