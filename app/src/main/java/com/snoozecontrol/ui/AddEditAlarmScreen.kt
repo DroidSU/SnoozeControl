@@ -77,7 +77,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snoozecontrol.R
 import com.snoozecontrol.model.ChallengeType
-import com.snoozecontrol.model.MathDifficulty
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.Utils
 import com.snoozecontrol.viewmodel.AddEditAlarmUiState
@@ -94,7 +93,6 @@ fun AddEditAlarmScreen(
     onMinuteChange: (Int) -> Unit,
     onAmPmChange: (Boolean) -> Unit,
     onChallengeTypeChange: (ChallengeType) -> Unit,
-    onMathDifficultyChange: (MathDifficulty) -> Unit = {},
     onSelectRingtoneClick: () -> Unit = {},
     onDaysChange: (Set<Int>) -> Unit,
     onSnoozeDurationChange: (Int) -> Unit = {},
@@ -249,11 +247,9 @@ fun AddEditAlarmScreen(
 
                     2 -> StepTwoWakeMethod(
                         challengeType = uiState.challengeType,
-                        mathDifficulty = uiState.mathDifficulty,
                         targetBarcode = uiState.targetBarcode,
                         isProUser = uiState.isProUser,
                         onChallengeTypeChange = onChallengeTypeChange,
-                        onMathDifficultyChange = onMathDifficultyChange,
                         onRegisterBarcodeClick = onRegisterBarcodeClick,
                         onOpenPaywall = { showPaywallSheet = true }
                     )
@@ -368,11 +364,9 @@ fun StepOneTime(
 @Composable
 fun StepTwoWakeMethod(
     challengeType: ChallengeType,
-    mathDifficulty: MathDifficulty,
     targetBarcode: String?,
     isProUser: Boolean = false,
     onChallengeTypeChange: (ChallengeType) -> Unit,
-    onMathDifficultyChange: (MathDifficulty) -> Unit,
     onRegisterBarcodeClick: () -> Unit,
     onOpenPaywall: () -> Unit = {}
 ) {
@@ -397,107 +391,7 @@ fun StepTwoWakeMethod(
             icon = Icons.Default.Calculate,
             isSelected = challengeType == ChallengeType.MATH,
             onClick = { onChallengeTypeChange(ChallengeType.MATH) }
-        ) {
-            AnimatedVisibility(
-                visible = challengeType == ChallengeType.MATH,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    Text(
-                        text = "Difficulty",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(42.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            MathDifficulty.entries.forEach { diff ->
-                                val isDiffSelected = mathDifficulty == diff
-                                val bg by animateColorAsState(
-                                    if (isDiffSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                    label = "diffBg"
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(bg)
-                                        .clickable { onMathDifficultyChange(diff) }
-                                        .padding(vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = diff.displayName,
-                                        fontWeight = if (isDiffSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 13.sp,
-                                        textAlign = TextAlign.Center,
-                                        color = if (isDiffSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Surface(
-                        onClick = onOpenPaywall,
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.WorkspacePremium,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (isProUser) "SnoozeControl Pro Active" else "Get Pro",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isProUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiaryContainer
-                            ) {
-                                Text(
-                                    text = if (isProUser) "PRO ✓" else "PRO 🔒",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = if (isProUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 

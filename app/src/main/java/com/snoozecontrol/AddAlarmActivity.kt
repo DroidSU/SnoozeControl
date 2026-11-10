@@ -164,7 +164,6 @@ class AddAlarmActivity : ComponentActivity() {
                                 onMinuteChange = viewModel::onMinuteChange,
                                 onAmPmChange = viewModel::onAmPmChange,
                                 onChallengeTypeChange = viewModel::onChallengeTypeChange,
-                                onMathDifficultyChange = viewModel::onMathDifficultyChange,
                                 onSelectRingtoneClick = { launchRingtonePicker(uiState.ringtoneUri) },
                                 onDaysChange = viewModel::onDaysChange,
                                 onSnoozeDurationChange = viewModel::onSnoozeDurationChange,

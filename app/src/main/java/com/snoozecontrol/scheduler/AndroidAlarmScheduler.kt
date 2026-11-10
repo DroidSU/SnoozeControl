@@ -77,11 +77,21 @@ class AndroidAlarmScheduler(
     }
 
     private fun scheduleBedtimeReminder(item: AlarmItem, alarmCal: Calendar) {
-        val bedtimeCal = (alarmCal.clone() as Calendar).apply {
+        val now = Calendar.getInstance()
+        var bedtimeCal = (alarmCal.clone() as Calendar).apply {
             add(Calendar.HOUR_OF_DAY, -8)
         }
 
-        if (bedtimeCal.after(Calendar.getInstance())) {
+        // If bedtime target for the next alarm occurrence is in the past,
+        // calculate bedtime target for the subsequent alarm occurrence.
+        if (!bedtimeCal.after(now)) {
+            val nextAlarmCal = calculateSubsequentAlarmCalendar(item, alarmCal)
+            bedtimeCal = (nextAlarmCal.clone() as Calendar).apply {
+                add(Calendar.HOUR_OF_DAY, -8)
+            }
+        }
+
+        if (bedtimeCal.after(now)) {
             val intent = Intent(context, BedtimeReceiver::class.java).apply {
                 putExtra("ALARM_TIME_DISPLAY", item.displayTime)
             }
@@ -106,6 +116,37 @@ class AndroidAlarmScheduler(
                 Log.e("AlarmScheduler", "Failed to schedule bedtime reminder: ${e.message}")
             }
         }
+    }
+
+    private fun calculateSubsequentAlarmCalendar(item: AlarmItem, fromCal: Calendar): Calendar {
+        val nextCal = fromCal.clone() as Calendar
+        val days = item.selectedDays
+        if (days.isEmpty()) {
+            nextCal.add(Calendar.DAY_OF_YEAR, 1)
+            return nextCal
+        }
+
+        val calDayMap = mapOf(
+            1 to Calendar.MONDAY,
+            2 to Calendar.TUESDAY,
+            3 to Calendar.WEDNESDAY,
+            4 to Calendar.THURSDAY,
+            5 to Calendar.FRIDAY,
+            6 to Calendar.SATURDAY,
+            7 to Calendar.SUNDAY
+        )
+        val targetCalDays = days.mapNotNull { calDayMap[it] }.toSet()
+
+        for (i in 1..7) {
+            val testCal = fromCal.clone() as Calendar
+            testCal.add(Calendar.DAY_OF_YEAR, i)
+            if (testCal.get(Calendar.DAY_OF_WEEK) in targetCalDays) {
+                return testCal
+            }
+        }
+
+        nextCal.add(Calendar.DAY_OF_YEAR, 1)
+        return nextCal
     }
 
     private fun cancelBedtimeReminder(item: AlarmItem) {

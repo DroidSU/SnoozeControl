@@ -30,11 +30,11 @@ class BedtimeReceiver : BroadcastReceiver() {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("Time to Wind Down 🌙")
-            .setContentText("Your alarm is set for $alarmTimeDisplay. Heading to bed now gives you 8 hours of sleep!")
+            .setContentTitle("Time to sleep! 🌙")
+            .setContentText("Alarm at $alarmTimeDisplay. Bed now = 8h sleep 😴")
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("Your alarm is set for $alarmTimeDisplay. Heading to bed now gives you 8 hours of restorative sleep to conquer tomorrow!")
+                    .bigText("Alarm set for $alarmTimeDisplay. Head to bed now for 8 hours of restorative sleep!")
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)

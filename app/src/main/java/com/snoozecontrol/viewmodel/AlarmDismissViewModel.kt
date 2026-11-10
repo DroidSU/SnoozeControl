@@ -126,8 +126,7 @@ class AlarmDismissViewModel @Inject constructor(
                         alarmId,
                         snoozeDur,
                         maxSnooze,
-                        currentSnooze,
-                        alarm.mathDifficulty
+                        currentSnooze
                     )
                     ChallengeType.BARCODE -> {
                         _uiState.update {
@@ -165,9 +164,9 @@ class AlarmDismissViewModel @Inject constructor(
         alarmId: Int,
         snoozeDur: Int,
         maxSnooze: Int,
-        currentSnooze: Int,
-        difficulty: MathDifficulty = MathDifficulty.EASY
+        currentSnooze: Int
     ) {
+        val difficulty = MathDifficulty.entries.random()
         val (equation, answer) = when (difficulty) {
             MathDifficulty.EASY -> {
                 // Easy: Two-digit simple mathematics (e.g. 2 * 10, 29 * 19, 45 + 38, 92 - 47)

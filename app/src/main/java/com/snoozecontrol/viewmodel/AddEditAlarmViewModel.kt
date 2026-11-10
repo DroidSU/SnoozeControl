@@ -189,10 +189,6 @@ class AddEditAlarmViewModel @Inject constructor(
         _uiState.update { it.copy(challengeType = type) }
     }
 
-    fun onMathDifficultyChange(difficulty: MathDifficulty) {
-        _uiState.update { it.copy(mathDifficulty = difficulty) }
-    }
-
     fun onRingtoneSelected(uriStr: String?, title: String) {
         _uiState.update { it.copy(ringtoneUri = uriStr, ringtoneTitle = title) }
     }
