@@ -114,6 +114,9 @@ class AlarmDismissActivity : ComponentActivity() {
                             shakeProgress = uiState.shakeProgress,
                             currentShakes = uiState.currentShakes,
                             requiredShakes = uiState.requiredShakes,
+                            failedAttempts = uiState.failedAttempts,
+                            isProUser = uiState.isProUser,
+                            isDebugMode = uiState.isDebugProEnabled,
                             onAnswerChange = viewModel::onAnswerChange,
                             onBarcodeScanned = { scannedBarcode ->
                                 viewModel.onBarcodeScanned(scannedBarcode) {}
@@ -121,8 +124,20 @@ class AlarmDismissActivity : ComponentActivity() {
                             onDismissClick = {
                                 viewModel.onDismissClick()
                             },
+                            onEmergencyBypassClick = {
+                                viewModel.emergencyBypass {}
+                            },
+                            onShakeFallbackClick = {
+                                viewModel.switchToShakeEmergencyFallback()
+                            },
                             onSnoozeClick = {
                                 viewModel.snoozeAlarm(this@AlarmDismissActivity) {}
+                            },
+                            onUnlockProClick = {
+                                viewModel.launchBillingFlow(this@AlarmDismissActivity)
+                            },
+                            onToggleDebugMode = {
+                                viewModel.toggleDebugProOverride()
                             }
                         )
                     }

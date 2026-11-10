@@ -68,6 +68,9 @@ dependencies {
     // ML Kit Barcode Scanning
     implementation(libs.play.services.mlkit.barcode.scanning)
 
+    // Google Play Billing
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
+
     // Ktor & Kotlinx Serialization
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.android)

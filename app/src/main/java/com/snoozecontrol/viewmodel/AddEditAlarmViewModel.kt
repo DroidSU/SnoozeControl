@@ -1,10 +1,12 @@
 package com.snoozecontrol.viewmodel
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snoozecontrol.data.AlarmDao
+import com.snoozecontrol.data.billing.BillingRepository
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.model.MathDifficulty
@@ -27,14 +29,16 @@ data class AddEditAlarmUiState(
     val minute: Int = 0,
     val isAm: Boolean = true,
     val challengeType: ChallengeType = ChallengeType.MATH,
-    val mathDifficulty: MathDifficulty = MathDifficulty.MEDIUM,
+    val mathDifficulty: MathDifficulty = MathDifficulty.EASY,
     val targetBarcode: String? = null,
     val ringtoneUri: String? = null,
     val ringtoneTitle: String = "Default Alarm Sound",
     val selectedDays: Set<Int> = emptySet(),
     val snoozeDurationMinutes: Int = 5,
     val isBedtimeReminderEnabled: Boolean = true,
-    val isLoaded: Boolean = false
+    val isLoaded: Boolean = false,
+    val isProUser: Boolean = false,
+    val isDebugProEnabled: Boolean = false
 ) {
     val final24Hour: Int
         get() = Utils.toHour24(hour12, isAm)
@@ -53,11 +57,43 @@ data class AddEditAlarmUiState(
 class AddEditAlarmViewModel @Inject constructor(
     application: Application,
     private val alarmDao: AlarmDao,
-    private val scheduler: AlarmScheduler
+    private val scheduler: AlarmScheduler,
+    private val billingRepository: BillingRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AddEditAlarmUiState())
     val uiState: StateFlow<AddEditAlarmUiState> = _uiState.asStateFlow()
+
+    init {
+        observeBillingStatus()
+    }
+
+    private fun observeBillingStatus() {
+        viewModelScope.launch {
+            billingRepository.isProUser.collect { isPro ->
+                _uiState.update {
+                    it.copy(
+                        isProUser = isPro,
+                        isDebugProEnabled = billingRepository.isDebugProEnabled()
+                    )
+                }
+            }
+        }
+    }
+
+    fun toggleDebugProOverride() {
+        val next = billingRepository.toggleDebugProOverride()
+        _uiState.update {
+            it.copy(
+                isDebugProEnabled = next,
+                isProUser = next || billingRepository.isProUser.value
+            )
+        }
+    }
+
+    fun launchBillingFlow(activity: Activity): Boolean {
+        return billingRepository.launchBillingFlow(activity)
+    }
 
     fun initAlarm(alarm: AlarmItem?, barcodeResult: String? = null) {
         if (_uiState.value.isLoaded) {
@@ -104,7 +140,7 @@ class AddEditAlarmViewModel @Inject constructor(
                 minute = min,
                 isAm = isAm,
                 challengeType = ChallengeType.MATH,
-                mathDifficulty = MathDifficulty.MEDIUM,
+                mathDifficulty = MathDifficulty.EASY,
                 targetBarcode = barcodeResult,
                 selectedDays = emptySet(),
                 snoozeDurationMinutes = 5,

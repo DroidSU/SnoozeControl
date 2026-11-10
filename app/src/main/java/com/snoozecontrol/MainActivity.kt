@@ -38,6 +38,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.snoozecontrol.ui.AlarmScreen
+import com.snoozecontrol.ui.PaywallBottomSheet
 import com.snoozecontrol.ui.theme.SnoozeControlTheme
 import com.snoozecontrol.util.ManufacturerPermissionHelper
 import com.snoozecontrol.util.PermissionManager
@@ -85,6 +86,7 @@ class MainActivity : ComponentActivity() {
             val alarms by viewModel.alarms.collectAsState()
             val nextAlarm by viewModel.nextAlarm.collectAsState()
             val weather by viewModel.weatherInfo.collectAsState()
+            val isProUser by viewModel.isProUser.collectAsState()
             val navController = rememberNavController()
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
             var showLocationRationale by remember {
                 mutableStateOf(!PermissionManager.hasLocationPermission(context))
             }
+            var showPaywallSheet by remember { mutableStateOf(false) }
 
             SnoozeControlTheme {
                 Surface(
@@ -111,6 +114,8 @@ class MainActivity : ComponentActivity() {
                                     alarms = alarms,
                                     nextAlarm = nextAlarm,
                                     weatherInfo = weather,
+                                    isProUser = isProUser,
+                                    isDebugMode = viewModel.isDebugProEnabled(),
                                     onAddClick = {
                                         context.startActivity(
                                             AddAlarmActivity.createIntent(context, null)
@@ -149,9 +154,24 @@ class MainActivity : ComponentActivity() {
                                                 viewModel.undoDelete(this@MainActivity)
                                             }
                                         }
-                                    }
+                                    },
+                                    onOpenPaywall = { showPaywallSheet = true },
+                                    onToggleDebugMode = { viewModel.toggleDebugProOverride() }
                                 )
                             }
+                        }
+
+                        if (showPaywallSheet) {
+                            PaywallBottomSheet(
+                                isProUser = isProUser,
+                                isDebugMode = viewModel.isDebugProEnabled(),
+                                onDismiss = { showPaywallSheet = false },
+                                onUnlockProClick = {
+                                    showPaywallSheet = false
+                                    viewModel.launchBillingFlow(this@MainActivity)
+                                },
+                                onToggleDebugMode = { viewModel.toggleDebugProOverride() }
+                            )
                         }
 
                         if (showLocationRationale) {

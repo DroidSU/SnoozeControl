@@ -116,11 +116,7 @@ class AddAlarmActivity : ComponentActivity() {
                 } catch (e: Exception) {
                     ChallengeType.MATH
                 },
-                mathDifficulty = try {
-                    MathDifficulty.valueOf(alarmDifficultyStr ?: "MEDIUM")
-                } catch (e: Exception) {
-                    MathDifficulty.MEDIUM
-                },
+                mathDifficulty = MathDifficulty.fromString(alarmDifficultyStr),
                 targetBarcode = alarmBarcode,
                 ringtoneUri = alarmRingtoneUri,
                 ringtoneTitle = alarmRingtoneTitle,
@@ -176,6 +172,8 @@ class AddAlarmActivity : ComponentActivity() {
                                 onNextStep = viewModel::nextStep,
                                 onPrevStep = viewModel::prevStep,
                                 onSetStep = viewModel::setStep,
+                                onUnlockProClick = { viewModel.launchBillingFlow(this@AddAlarmActivity) },
+                                onToggleDebugMode = { viewModel.toggleDebugProOverride() },
                                 onSave = {
                                     if (!PermissionManager.hasNotificationPermission(this@AddAlarmActivity)) {
                                         PermissionManager.getNotificationPermission()?.let { perm ->

@@ -1,11 +1,13 @@
 package com.snoozecontrol.viewmodel
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snoozecontrol.R
 import com.snoozecontrol.data.AlarmDao
+import com.snoozecontrol.data.billing.BillingRepository
 import com.snoozecontrol.model.ChallengeType
 import com.snoozecontrol.model.MathDifficulty
 import com.snoozecontrol.scheduler.AlarmScheduler
@@ -42,7 +44,10 @@ data class AlarmDismissUiState(
     val quote: Quote = QuoteProvider.getTodayQuote(),
     val shakeProgress: Float = 0f,
     val currentShakes: Int = 0,
-    val requiredShakes: Int = 25
+    val requiredShakes: Int = 35,
+    val failedAttempts: Int = 0,
+    val isProUser: Boolean = false,
+    val isDebugProEnabled: Boolean = false
 ) {
     val canSnooze: Boolean
         get() = snoozeCount < maxSnoozeCount && maxSnoozeCount > 0
@@ -55,7 +60,8 @@ data class AlarmDismissUiState(
 class AlarmDismissViewModel @Inject constructor(
     application: Application,
     private val alarmDao: AlarmDao,
-    private val scheduler: AlarmScheduler
+    private val scheduler: AlarmScheduler,
+    private val billingRepository: BillingRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AlarmDismissUiState())
@@ -66,6 +72,34 @@ class AlarmDismissViewModel @Inject constructor(
 
     init {
         getCurrentWeather()
+        observeBillingStatus()
+    }
+
+    private fun observeBillingStatus() {
+        viewModelScope.launch {
+            billingRepository.isProUser.collect { isPro ->
+                _uiState.update {
+                    it.copy(
+                        isProUser = isPro,
+                        isDebugProEnabled = billingRepository.isDebugProEnabled()
+                    )
+                }
+            }
+        }
+    }
+
+    fun toggleDebugProOverride() {
+        val next = billingRepository.toggleDebugProOverride()
+        _uiState.update {
+            it.copy(
+                isDebugProEnabled = next,
+                isProUser = next || billingRepository.isProUser.value
+            )
+        }
+    }
+
+    fun launchBillingFlow(activity: Activity): Boolean {
+        return billingRepository.launchBillingFlow(activity)
     }
 
     fun getCurrentWeather(forceRefresh: Boolean = false) {
@@ -131,44 +165,76 @@ class AlarmDismissViewModel @Inject constructor(
         snoozeDur: Int,
         maxSnooze: Int,
         currentSnooze: Int,
-        difficulty: MathDifficulty = MathDifficulty.MEDIUM
+        difficulty: MathDifficulty = MathDifficulty.EASY
     ) {
         val (equation, answer) = when (difficulty) {
             MathDifficulty.EASY -> {
-                val num1 = (1..10).random()
-                val num2 = (1..10).random()
-                val op = listOf("+", "-").random()
-                if (op == "+") "$num1 + $num2" to (num1 + num2)
-                else {
-                    val max = maxOf(num1, num2)
-                    val min = minOf(num1, num2)
-                    "$max - $min" to (max - min)
-                }
-            }
-
-            MathDifficulty.MEDIUM -> {
-                val num1 = (10..50).random()
-                val num2 = (2..12).random()
-                val op = listOf("+", "-", "*").random()
-                when (op) {
-                    "+" -> "$num1 + $num2" to (num1 + num2)
-                    "-" -> {
-                        val n2 = (1..num1).random()
-                        "$num1 - $n2" to (num1 - n2)
+                // Easy: Two-digit simple mathematics (e.g. 2 * 10, 29 * 19, 45 + 38, 92 - 47)
+                val problemType = (1..3).random()
+                when (problemType) {
+                    1 -> {
+                        // 2-digit multiplication (e.g. 2 * 10, 29 * 19)
+                        val num1 = if ((1..2).random() == 1) (2..9).random() else (10..29).random()
+                        val num2 = (10..20).random()
+                        "$num1 × $num2" to (num1 * num2)
                     }
 
-                    else -> "$num1 * $num2" to (num1 * num2)
+                    2 -> {
+                        // 2-digit addition
+                        val num1 = (10..99).random()
+                        val num2 = (10..99).random()
+                        "$num1 + $num2" to (num1 + num2)
+                    }
+
+                    else -> {
+                        // 2-digit subtraction
+                        val num1 = (30..99).random()
+                        val num2 = (10..num1).random()
+                        "$num1 - $num2" to (num1 - num2)
+                    }
                 }
             }
 
-            MathDifficulty.HARD -> {
-                val num1 = (12..30).random()
-                val num2 = (3..15).random()
-                val num3 = (5..25).random()
-                val op = listOf("+", "-").random()
-                val prod = num1 * num2
-                if (op == "+") "$num1 * $num2 + $num3" to (prod + num3)
-                else "$num1 * $num2 - $num3" to (prod - num3)
+            MathDifficulty.GENIUS -> {
+                // Genius: 3-digit harder problems (e.g. 354 + 478, 832 - 475, 125 * 8, 124 * 6 + 45)
+                val problemType = (1..3).random()
+                when (problemType) {
+                    1 -> {
+                        // 3-digit addition
+                        val num1 = (100..999).random()
+                        val num2 = (100..999).random()
+                        "$num1 + $num2" to (num1 + num2)
+                    }
+
+                    2 -> {
+                        // 3-digit subtraction
+                        val num1 = (200..999).random()
+                        val num2 = (100..num1).random()
+                        "$num1 - $num2" to (num1 - num2)
+                    }
+
+                    else -> {
+                        // Multi-step with 3-digit or 3-digit multiplication
+                        val isMultiStep = (1..2).random() == 1
+                        if (isMultiStep) {
+                            val num1 = (10..35).random()
+                            val num2 = (10..25).random()
+                            val num3 = (50..300).random()
+                            val op = listOf("+", "-").random()
+                            val prod = num1 * num2
+                            if (op == "+") "$num1 × $num2 + $num3" to (prod + num3)
+                            else {
+                                val maxVal = maxOf(prod, num3)
+                                val minVal = minOf(prod, num3)
+                                "$maxVal - $minVal" to (maxVal - minVal)
+                            }
+                        } else {
+                            val num1 = (100..500).random()
+                            val num2 = (3..9).random()
+                            "$num1 × $num2" to (num1 * num2)
+                        }
+                    }
+                }
             }
         }
 
@@ -180,7 +246,8 @@ class AlarmDismissViewModel @Inject constructor(
                 correctAnswer = answer,
                 snoozeDurationMinutes = snoozeDur,
                 maxSnoozeCount = maxSnooze,
-                snoozeCount = currentSnooze
+                snoozeCount = currentSnooze,
+                failedAttempts = 0
             )
         }
     }
@@ -252,12 +319,31 @@ class AlarmDismissViewModel @Inject constructor(
             } else {
                 _uiState.update {
                     it.copy(
-                        errorMessage = getApplication<Application>().getString(R.string.error_incorrect_answer)
+                        errorMessage = getApplication<Application>().getString(R.string.error_incorrect_answer),
+                        failedAttempts = it.failedAttempts + 1
                     )
                 }
             }
         } else {
             onDismissClick(onSuccess)
+        }
+    }
+
+    fun emergencyBypass(onSuccess: () -> Unit = {}) {
+        val currentState = _uiState.value
+        resetSnoozeCountAndDismiss(currentState.alarmId)
+        onSuccess()
+    }
+
+    fun switchToShakeEmergencyFallback() {
+        _uiState.update {
+            it.copy(
+                challengeType = ChallengeType.SHAKE,
+                shakeProgress = 0f,
+                currentShakes = 0,
+                requiredShakes = 35,
+                errorMessage = null
+            )
         }
     }
 

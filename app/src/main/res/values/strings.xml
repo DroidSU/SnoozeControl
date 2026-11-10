@@ -18,6 +18,12 @@
     <string name="solve_challenge_instruction">Solve the challenge to stop the alarm</string>
     <string name="answer_placeholder">Answer&#8230;</string>
     <string name="dismiss_alarm_button">Dismiss Alarm</string>
+    <string name="calculator_title">Quick Calculator</string>
+    <string name="calculator_use_result">Use Result</string>
+    <string name="emergency_bypass_button">Emergency Bypass</string>
+    <string name="emergency_bypass_dialog_title">Emergency Bypass</string>
+    <string name="emergency_bypass_dialog_desc">Stuck on this math problem? You can bypass the alarm to stop the ringing.</string>
+    <string name="cancel">Cancel</string>
 
     <!-- AddEditAlarmScreen -->
     <string name="set_alarm_title">Set Alarm</string>

@@ -22,7 +22,7 @@ data class AlarmItem(
     val snoozedUntilMillis: Long? = null,
     val ringtoneUri: String? = null,
     val ringtoneTitle: String = "Default Alarm Sound",
-    val mathDifficulty: MathDifficulty = MathDifficulty.MEDIUM,
+    val mathDifficulty: MathDifficulty = MathDifficulty.EASY,
     val skippedOccurrenceMillis: Long? = null
 ) {
     val hour12: Int

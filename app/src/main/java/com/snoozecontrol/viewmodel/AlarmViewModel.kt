@@ -1,10 +1,12 @@
 package com.snoozecontrol.viewmodel
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snoozecontrol.data.AlarmDao
+import com.snoozecontrol.data.billing.BillingRepository
 import com.snoozecontrol.model.AlarmItem
 import com.snoozecontrol.scheduler.AlarmScheduler
 import com.snoozecontrol.util.UpcomingAlarmNotificationManager
@@ -25,8 +27,18 @@ import javax.inject.Inject
 class AlarmViewModel @Inject constructor(
     application: Application,
     private val alarmDao: AlarmDao,
-    private val scheduler: AlarmScheduler
+    private val scheduler: AlarmScheduler,
+    private val billingRepository: BillingRepository
 ) : AndroidViewModel(application) {
+
+    val isProUser: StateFlow<Boolean> = billingRepository.isProUser
+
+    fun isDebugProEnabled(): Boolean = billingRepository.isDebugProEnabled()
+
+    fun toggleDebugProOverride(): Boolean = billingRepository.toggleDebugProOverride()
+
+    fun launchBillingFlow(activity: Activity): Boolean =
+        billingRepository.launchBillingFlow(activity)
 
     private val _weatherInfo = MutableStateFlow<WeatherInfo?>(null)
     val weatherInfo = _weatherInfo.asStateFlow()

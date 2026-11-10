@@ -38,19 +38,29 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,10 +97,17 @@ fun AlarmDismissScreen(
     shakeProgress: Float = 0f,
     currentShakes: Int = 0,
     requiredShakes: Int = 25,
+    failedAttempts: Int = 0,
+    isProUser: Boolean = false,
+    isDebugMode: Boolean = false,
     onAnswerChange: (String) -> Unit,
     onBarcodeScanned: (String) -> Unit,
     onDismissClick: () -> Unit,
-    onSnoozeClick: () -> Unit = {}
+    onEmergencyBypassClick: () -> Unit = {},
+    onShakeFallbackClick: () -> Unit = {},
+    onSnoozeClick: () -> Unit = {},
+    onUnlockProClick: () -> Unit = {},
+    onToggleDebugMode: (Boolean) -> Unit = {}
 ) {
     BackHandler(enabled = !isSuccess) {
         // Prevent back gesture exit while alarm is ringing/active
@@ -117,6 +134,11 @@ fun AlarmDismissScreen(
     )
 
     var isTorchEnabled by remember { mutableStateOf(false) }
+    var showCalculatorSheet by remember { mutableStateOf(false) }
+    var showEmergencyDialog by remember { mutableStateOf(false) }
+    var showFreeShakeDialog by remember { mutableStateOf(false) }
+    var isFreeShakeModeActive by remember { mutableStateOf(false) }
+    var showPaywallSheet by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (challengeType == ChallengeType.BARCODE) {
@@ -419,12 +441,54 @@ fun AlarmDismissScreen(
                                 modifier = Modifier.padding(20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(
-                                    text = "Solve to Dismiss",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Solve to Dismiss",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                    Surface(
+                                        onClick = {
+                                            if (isProUser) {
+                                                showCalculatorSheet = true
+                                            } else {
+                                                showPaywallSheet = true
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (isProUser) MaterialTheme.colorScheme.primaryContainer.copy(
+                                            alpha = 0.7f
+                                        )
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(
+                                                horizontal = 10.dp,
+                                                vertical = 5.dp
+                                            ),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isProUser) Icons.Default.Calculate else Icons.Default.Lock,
+                                                contentDescription = null,
+                                                tint = if (isProUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = if (isProUser) "Calc" else "Calc 🔒",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isProUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -478,6 +542,76 @@ fun AlarmDismissScreen(
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.padding(top = 10.dp)
                                         )
+                                    }
+                                }
+
+                                // Pro Instant Bypass (2 failed attempts)
+                                AnimatedVisibility(visible = isProUser && failedAttempts >= 2) {
+                                    Surface(
+                                        onClick = { showEmergencyDialog = true },
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = MaterialTheme.colorScheme.errorContainer,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 14.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(
+                                                vertical = 10.dp,
+                                                horizontal = 14.dp
+                                            ),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Warning,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = stringResource(R.string.emergency_bypass_button),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Free Shake Fallback Bypass (3 failed attempts)
+                                AnimatedVisibility(visible = !isProUser && failedAttempts >= 3) {
+                                    Surface(
+                                        onClick = { showFreeShakeDialog = true },
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 14.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(
+                                                vertical = 10.dp,
+                                                horizontal = 14.dp
+                                            ),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Warning,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Emergency Shake Bypass (Free)",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -641,6 +775,298 @@ fun AlarmDismissScreen(
 //                        color = MaterialTheme.colorScheme.onSurfaceVariant
 //                    )
                 }
+            }
+        }
+
+        if (showFreeShakeDialog) {
+            AlertDialog(
+                onDismissRequest = { showFreeShakeDialog = false },
+                title = { Text(text = "Emergency Shake Fallback", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        Text(text = "Stuck on this math challenge?")
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(text = "Free users can shake the phone to trigger a free emergency bypass, or upgrade to Pro for instant 1-tap bypasses.")
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showFreeShakeDialog = false
+                            onShakeFallbackClick()
+                        }
+                    ) {
+                        Text(text = "Start Shake Challenge")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showFreeShakeDialog = false
+                            showPaywallSheet = true
+                        }
+                    ) {
+                        Text(text = "Upgrade to Pro 🔒")
+                    }
+                }
+            )
+        }
+
+        if (showPaywallSheet) {
+            PaywallBottomSheet(
+                isProUser = isProUser,
+                isDebugMode = isDebugMode,
+                onDismiss = { showPaywallSheet = false },
+                onUnlockProClick = {
+                    showPaywallSheet = false
+                    onUnlockProClick()
+                },
+                onToggleDebugMode = onToggleDebugMode
+            )
+        }
+
+        if (showEmergencyDialog) {
+            AlertDialog(
+                onDismissRequest = { showEmergencyDialog = false },
+                title = {
+                    Text(
+                        text = stringResource(R.string.emergency_bypass_dialog_title),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(text = stringResource(R.string.emergency_bypass_dialog_desc))
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showEmergencyDialog = false
+                            onEmergencyBypassClick()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(text = stringResource(R.string.emergency_bypass_button))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEmergencyDialog = false }) {
+                        Text(text = stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        if (showCalculatorSheet) {
+            QuickCalculatorSheet(
+                onDismiss = { showCalculatorSheet = false },
+                onUseResult = { res ->
+                    onAnswerChange(res)
+                    showCalculatorSheet = false
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuickCalculatorSheet(
+    onDismiss: () -> Unit,
+    onUseResult: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var expression by remember { mutableStateOf("") }
+    var resultDisplay by remember { mutableStateOf("0") }
+
+    fun calculateResult(expr: String): String {
+        if (expr.isBlank()) return "0"
+        return try {
+            val clean = expr.replace("×", "*").replace("÷", "/")
+            val tokens = clean.split(Regex("(?<=[-+*/])|(?=[-+*/])")).map { it.trim() }
+                .filter { it.isNotEmpty() }
+            if (tokens.isEmpty()) return "0"
+
+            if (tokens.size >= 3) {
+                val num1 = tokens[0].toDoubleOrNull() ?: 0.0
+                val op = tokens[1]
+                val num2 = tokens[2].toDoubleOrNull() ?: 0.0
+                val res = when (op) {
+                    "+" -> num1 + num2
+                    "-" -> num1 - num2
+                    "*" -> num1 * num2
+                    "/" -> if (num2 != 0.0) num1 / num2 else 0.0
+                    else -> 0.0
+                }
+                if (res % 1.0 == 0.0) res.toLong()
+                    .toString() else String.format(java.util.Locale.US, "%.2f", res)
+            } else {
+                tokens[0].toDoubleOrNull()?.let {
+                    if (it % 1.0 == 0.0) it.toLong()
+                        .toString() else String.format(java.util.Locale.US, "%.2f", it)
+                } ?: expr
+            }
+        } catch (_: Exception) {
+            "Error"
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Calculate,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.calculator_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(76.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = expression.ifEmpty { "0" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = resultDisplay,
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            val buttons = listOf(
+                listOf("C", "⌫", "÷"),
+                listOf("7", "8", "9", "×"),
+                listOf("4", "5", "6", "-"),
+                listOf("1", "2", "3", "+"),
+                listOf("0", ".", "=")
+            )
+
+            buttons.forEach { row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { label ->
+                        val isOp = label in listOf("+", "-", "×", "÷", "=")
+                        val isSpecial = label in listOf("C", "⌫")
+                        val containerColor = when {
+                            label == "=" -> MaterialTheme.colorScheme.primary
+                            isOp -> MaterialTheme.colorScheme.primaryContainer
+                            isSpecial -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
+                        val contentColor = when {
+                            label == "=" -> MaterialTheme.colorScheme.onPrimary
+                            isOp -> MaterialTheme.colorScheme.onPrimaryContainer
+                            isSpecial -> MaterialTheme.colorScheme.onErrorContainer
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+
+                        Surface(
+                            onClick = {
+                                when (label) {
+                                    "C" -> {
+                                        expression = ""
+                                        resultDisplay = "0"
+                                    }
+
+                                    "⌫" -> {
+                                        if (expression.isNotEmpty()) {
+                                            expression = expression.dropLast(1)
+                                            resultDisplay = calculateResult(expression)
+                                        }
+                                    }
+
+                                    "=" -> {
+                                        val res = calculateResult(expression)
+                                        resultDisplay = res
+                                    }
+
+                                    else -> {
+                                        expression += label
+                                        resultDisplay = calculateResult(expression)
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = containerColor
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = label,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = contentColor
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = { onUseResult(resultDisplay) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text(
+                    text = stringResource(R.string.calculator_use_result),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.snoozecontrol.ui
 
+import android.content.pm.ApplicationInfo
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.RepeatMode
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,10 +92,14 @@ fun AlarmScreen(
     alarms: List<AlarmItem>,
     nextAlarm: AlarmItem?,
     weatherInfo: WeatherInfo?,
+    isProUser: Boolean = false,
+    isDebugMode: Boolean = false,
     onAddClick: () -> Unit,
     onEditClick: (Int) -> Unit,
     onToggleAlarm: (Int) -> Unit,
-    onDeleteAlarm: (AlarmItem) -> Unit
+    onDeleteAlarm: (AlarmItem) -> Unit,
+    onOpenPaywall: () -> Unit = {},
+    onToggleDebugMode: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val greeting = remember { Utils.getGreeting(context) }
@@ -143,10 +149,18 @@ fun AlarmScreen(
                     bottom = innerPadding.calculateBottomPadding() + 90.dp,
                     start = 18.dp,
                     end = 18.dp,
-                    top = 140.dp
+                    top = 65.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                item {
+                    FloatingGreetingBar(
+                        greeting = greeting,
+                        nextAlarm = nextAlarm,
+                        weatherInfo = weatherInfo
+                    )
+                }
+
                 if (alarms.isEmpty()) {
                     item {
                         EmptyStateView()
@@ -163,30 +177,128 @@ fun AlarmScreen(
                 }
             }
 
-            FloatingGreetingBar(greeting, nextAlarm, weatherInfo)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+            ) {
+                MainScreenHeader(
+                    isProUser = isProUser,
+                    isDebugMode = isDebugMode,
+                    onOpenPaywall = onOpenPaywall,
+                    onToggleDebugMode = onToggleDebugMode
+                )
+            }
         }
     }
 }
 
 @Composable
-fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: WeatherInfo?) {
+fun MainScreenHeader(
+    isProUser: Boolean = false,
+    isDebugMode: Boolean = false,
+    onOpenPaywall: () -> Unit = {},
+    onToggleDebugMode: (Boolean) -> Unit = {}
+) {
+    val context = LocalContext.current
+    val isDebugBuild =
+        remember { (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.5).sp
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        if (isDebugBuild) {
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Dev Mode Toggle Button
+            Surface(
+                onClick = { onToggleDebugMode(!isDebugMode) },
+                shape = RoundedCornerShape(12.dp),
+                color = if (isDebugMode) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(
+                    alpha = 0.6f
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isDebugMode) "DEV ON" else "DEV OFF",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDebugMode) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Pro Purchase Button (Far Top Right)
+        Surface(
+            onClick = onOpenPaywall,
+            shape = RoundedCornerShape(12.dp),
+            color = if (isProUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WorkspacePremium,
+                    contentDescription = null,
+                    tint = if (isProUser) Color.White else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (isProUser) "PRO ✓" else "PRO 🔒",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isProUser) Color.White else MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FloatingGreetingBar(
+    greeting: String,
+    nextAlarm: AlarmItem?,
+    weatherInfo: WeatherInfo?
+) {
     val todayQuote = remember { QuoteProvider.getTodayQuote() }
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(18.dp)
-            .statusBarsPadding(),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        tonalElevation = 8.dp,
+        tonalElevation = 6.dp,
         border = BorderStroke(
             1.dp,
             MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
         )
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -198,7 +310,9 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: We
                         text = greeting,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     if (nextAlarm != null) {
@@ -209,30 +323,33 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: We
                                 nextAlarm.displayTime
                             ),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
                 if (weatherInfo != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.WbSunny,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "${weatherInfo.temperatureCelsius}°C",
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -240,11 +357,12 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: We
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                shape = RoundedCornerShape(12.dp)
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
@@ -260,7 +378,7 @@ fun FloatingGreetingBar(greeting: String, nextAlarm: AlarmItem?, weatherInfo: We
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "“${todayQuote.text}”",
+                        text = "“${todayQuote.text}” — ${todayQuote.author}",
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

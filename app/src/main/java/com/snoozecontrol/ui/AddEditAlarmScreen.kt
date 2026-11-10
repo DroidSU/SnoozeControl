@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -56,7 +57,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,10 +101,13 @@ fun AddEditAlarmScreen(
     onNextStep: () -> Unit = {},
     onPrevStep: () -> Unit = {},
     onSetStep: (Int) -> Unit = {},
+    onUnlockProClick: () -> Unit = {},
+    onToggleDebugMode: (Boolean) -> Unit = {},
     onSave: () -> Unit,
     onBack: () -> Unit,
     onRegisterBarcodeClick: () -> Unit
 ) {
+    var showPaywallSheet by remember { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -242,9 +248,11 @@ fun AddEditAlarmScreen(
                         challengeType = uiState.challengeType,
                         mathDifficulty = uiState.mathDifficulty,
                         targetBarcode = uiState.targetBarcode,
+                        isProUser = uiState.isProUser,
                         onChallengeTypeChange = onChallengeTypeChange,
                         onMathDifficultyChange = onMathDifficultyChange,
-                        onRegisterBarcodeClick = onRegisterBarcodeClick
+                        onRegisterBarcodeClick = onRegisterBarcodeClick,
+                        onOpenPaywall = { showPaywallSheet = true }
                     )
 
                     3 -> StepThreeSchedule(
@@ -261,6 +269,19 @@ fun AddEditAlarmScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
             }
+        }
+
+        if (showPaywallSheet) {
+            PaywallBottomSheet(
+                isProUser = uiState.isProUser,
+                isDebugMode = uiState.isDebugProEnabled,
+                onDismiss = { showPaywallSheet = false },
+                onUnlockProClick = {
+                    showPaywallSheet = false
+                    onUnlockProClick()
+                },
+                onToggleDebugMode = onToggleDebugMode
+            )
         }
     }
 }
@@ -346,9 +367,11 @@ fun StepTwoWakeMethod(
     challengeType: ChallengeType,
     mathDifficulty: MathDifficulty,
     targetBarcode: String?,
+    isProUser: Boolean = false,
     onChallengeTypeChange: (ChallengeType) -> Unit,
     onMathDifficultyChange: (MathDifficulty) -> Unit,
-    onRegisterBarcodeClick: () -> Unit
+    onRegisterBarcodeClick: () -> Unit,
+    onOpenPaywall: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -419,6 +442,53 @@ fun StepTwoWakeMethod(
                                         color = if (isDiffSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        onClick = onOpenPaywall,
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WorkspacePremium,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isProUser) "SnoozeControl Pro Active" else "Get Pro",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isProUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                            ) {
+                                Text(
+                                    text = if (isProUser) "PRO ✓" else "PRO 🔒",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
                             }
                         }
                     }
@@ -633,11 +703,13 @@ fun StepThreeSchedule(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 4. BEDTIME REMINDER CARD
+        // 4. BEDTIME REMINDER CARD (Hidden for now)
+        /*
         BedtimeReminderCard(
             isEnabled = isBedtimeReminderEnabled,
             onToggle = onBedtimeReminderToggle
         )
+        */
     }
 }
 
