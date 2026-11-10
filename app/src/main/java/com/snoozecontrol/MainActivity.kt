@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
             val nextAlarm by viewModel.nextAlarm.collectAsState()
             val weather by viewModel.weatherInfo.collectAsState()
             val isProUser by viewModel.isProUser.collectAsState()
+            val isLoading by viewModel.isLoading.collectAsState()
             val navController = rememberNavController()
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
@@ -116,6 +117,7 @@ class MainActivity : ComponentActivity() {
                                     weatherInfo = weather,
                                     isProUser = isProUser,
                                     isDebugMode = viewModel.isDebugProEnabled(),
+                                    isLoading = isLoading,
                                     onAddClick = {
                                         context.startActivity(
                                             AddAlarmActivity.createIntent(context, null)

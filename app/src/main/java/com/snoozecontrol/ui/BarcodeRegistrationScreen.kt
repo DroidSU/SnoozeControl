@@ -92,7 +92,7 @@ fun BarcodeRegistrationScreen(
                         Text(
                             text = stringResource(R.string.register_barcode_title),
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     },
                     navigationIcon = {
@@ -100,12 +100,12 @@ fun BarcodeRegistrationScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.back_button_desc),
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Black.copy(alpha = 0.4f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                     )
                 )
             }
@@ -124,15 +124,11 @@ fun BarcodeRegistrationScreen(
                     ) {
                         Surface(
                             onClick = { isTorchEnabled = !isTorchEnabled },
-                            color = if (isTorchEnabled) MaterialTheme.colorScheme.primaryContainer else Color.Black.copy(
-                                alpha = 0.65f
-                            ),
+                            color = if (isTorchEnabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(20.dp),
                             border = BorderStroke(
                                 1.dp,
-                                if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(
-                                    alpha = 0.5f
-                                )
+                                if (isTorchEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                             )
                         ) {
                             Row(
@@ -142,13 +138,13 @@ fun BarcodeRegistrationScreen(
                                 Icon(
                                     imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                                     contentDescription = null,
-                                    tint = if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White,
+                                    tint = if (isTorchEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (isTorchEnabled) "Flashlight ON 💡" else "Flashlight OFF ⚡",
-                                    color = if (isTorchEnabled) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+                                    color = if (isTorchEnabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
@@ -158,14 +154,14 @@ fun BarcodeRegistrationScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         Surface(
-                            color = Color.Black.copy(alpha = 0.6f),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
                             shape = RoundedCornerShape(24.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = stringResource(R.string.scan_barcode_instruction),
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(20.dp),
                                 textAlign = TextAlign.Center
                             )

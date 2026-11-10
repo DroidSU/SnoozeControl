@@ -1,12 +1,15 @@
 package com.snoozecontrol.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -82,5 +85,24 @@ fun SnoozeControlTheme(
         colorScheme = colorScheme,
         typography = Typography,
         content = content
+    )
+}
+
+fun Modifier.appBackgroundGradient(
+    primaryContainer: androidx.compose.ui.graphics.Color,
+    background: androidx.compose.ui.graphics.Color,
+    isDark: Boolean
+): Modifier {
+    val topAlpha = if (isDark) 0.65f else 0.70f
+    val midAlpha = if (isDark) 0.25f else 0.30f
+
+    return this.background(
+        Brush.verticalGradient(
+            colors = listOf(
+                primaryContainer.copy(alpha = topAlpha),
+                primaryContainer.copy(alpha = midAlpha),
+                background
+            )
+        )
     )
 }

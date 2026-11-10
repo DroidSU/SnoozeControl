@@ -12,9 +12,11 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,17 +27,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -47,11 +56,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +82,8 @@ object TtsManager {
     private var textToSpeech: TextToSpeech? = null
     private var isReady = false
     private var onSpeakingListener: ((Boolean) -> Unit)? = null
+    private var onCompleteListener: (() -> Unit)? = null
+    private var isManualStop = false
 
     fun prewarm(context: Context) {
         if (textToSpeech != null) return
@@ -87,6 +99,9 @@ object TtsManager {
 
                     override fun onDone(utteranceId: String?) {
                         onSpeakingListener?.invoke(false)
+                        if (!isManualStop) {
+                            onCompleteListener?.invoke()
+                        }
                     }
 
                     @Deprecated("Deprecated in Java")
@@ -102,11 +117,16 @@ object TtsManager {
         onSpeakingListener = listener
     }
 
+    fun setCompleteListener(listener: (() -> Unit)?) {
+        onCompleteListener = listener
+    }
+
     fun isReady(): Boolean = isReady && textToSpeech != null
 
     fun speak(text: String) {
         if (textToSpeech != null) {
             try {
+                isManualStop = false
                 textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "briefing_id")
             } catch (e: Exception) {
                 Log.e("TtsManager", "Error speaking text", e)
@@ -115,6 +135,7 @@ object TtsManager {
     }
 
     fun stop() {
+        isManualStop = true
         val tts = textToSpeech
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -127,6 +148,7 @@ object TtsManager {
 
     fun shutdown() {
         onSpeakingListener = null
+        onCompleteListener = null
         val ttsToShutdown = textToSpeech
         textToSpeech = null
         isReady = false
@@ -232,7 +254,7 @@ fun MorningDashboardScreen(
         }
     }
 
-    DisposableEffect(context, isInPreview) {
+    DisposableEffect(context, isInPreview, onStartDayClick) {
         if (isInPreview) {
             onDispose { }
         } else {
@@ -240,9 +262,13 @@ fun MorningDashboardScreen(
             TtsManager.setSpeakingListener { speaking ->
                 isSpeaking = speaking
             }
+            TtsManager.setCompleteListener {
+                onStartDayClick()
+            }
 
             onDispose {
                 TtsManager.setSpeakingListener(null)
+                TtsManager.setCompleteListener(null)
             }
         }
     }
@@ -269,7 +295,7 @@ fun MorningDashboardScreen(
         val infiniteTransition = rememberInfiniteTransition(label = "pulseAudio")
         infiniteTransition.animateFloat(
             initialValue = 1f,
-            targetValue = 1.03f,
+            targetValue = 1.05f,
             animationSpec = infiniteRepeatable(
                 animation = tween(600, easing = EaseInOutSine),
                 repeatMode = RepeatMode.Reverse
@@ -280,10 +306,20 @@ fun MorningDashboardScreen(
         1f
     }
 
+    val isDark = isSystemInDarkTheme()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.60f else 0.65f),
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.20f else 0.25f),
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            )
     ) {
         Column(
             modifier = Modifier
@@ -291,129 +327,207 @@ fun MorningDashboardScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp, vertical = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Section: Time, Greeting, Name, Weather, Quote
+            // Top Section: Hero Cards
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 24.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Current Time
-                Text(
-                    text = currentTimeText,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 58.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = (-1.5).sp
+                // 1. Hero Clock Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            8.dp,
+                            RoundedCornerShape(28.dp),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        ),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                    border = BorderStroke(
+                        0.5.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Greeting Badge
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (currentHour in 6..18) Icons.Default.WbSunny else Icons.Default.NightsStay,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "$timeGreeting, $actualUserName",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                // 2. Time-of-day greeting
-                Text(
-                    text = timeGreeting,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Normal
+                        // Clock Time
+                        Text(
+                            text = currentTimeText,
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontSize = 58.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-1.5).sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Full Date
+                        Text(
+                            text = currentDateText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                // 2. Weather Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(24.dp)),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    border = BorderStroke(
+                        0.5.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = weatherText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
+                        ) {
+                            Text(
+                                text = "Weather",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
 
-                Spacer(modifier = Modifier.height(2.dp))
-
-                // 3. User name
-                /**
-                 * This section is commented out now, uncomment it when you add getting usernames.
-                 */
-//                Text(
-//                    text = actualUserName,
-//                    style = MaterialTheme.typography.headlineLarge.copy(
-//                        fontSize = 32.sp,
-//                        fontWeight = FontWeight.Bold
-//                    ),
-//                    color = MaterialTheme.colorScheme.onBackground
-//                )
-//
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // 4. Weather / temperature
-                Text(
-                    text = weatherText,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
+                // 3. Inspirational Quote Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(24.dp)),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    border = BorderStroke(
+                        0.5.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FormatQuote,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "DAILY INSPIRATION",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                letterSpacing = 1.sp
+                            )
+                        }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                // 5. Short quote / motivational message
-                Text(
-                    text = "“${quote.text}”",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontStyle = FontStyle.Italic,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Normal,
-                        lineHeight = 22.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
+                        Text(
+                            text = "“${quote.text}”",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontStyle = FontStyle.Italic,
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        if (!quote.author.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "— ${quote.author}",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.align(Alignment.End)
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // Bottom Section: Actions
+            // Bottom Section: Start My Day Primary Button
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Secondary Action: Voice Briefing Toggle
-                OutlinedButton(
-                    onClick = toggleBriefing,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .scale(pulseScale),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = if (isSpeaking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
-                            alpha = 0.35f
-                        )
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (isSpeaking) MaterialTheme.colorScheme.primaryContainer.copy(
-                            alpha = 0.4f
-                        ) else MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.Default.RecordVoiceOver,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = if (isSpeaking) "Pause Voice Briefing 🔇" else "Play Voice Briefing 🎙️",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                // 6. Primary Action: Start My Day
                 Button(
                     onClick = {
                         if (!isInPreview) {
@@ -423,7 +537,12 @@ fun MorningDashboardScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(58.dp),
+                        .height(58.dp)
+                        .shadow(
+                            12.dp,
+                            RoundedCornerShape(20.dp),
+                            ambientColor = MaterialTheme.colorScheme.primary
+                        ),
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -443,7 +562,40 @@ fun MorningDashboardScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+
+        // Top-Right Speaker Icon Button
+        IconButton(
+            onClick = toggleBriefing,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 16.dp, end = 20.dp)
+                .scale(pulseScale)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = if (isSpeaking) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (isSpeaking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(
+                        alpha = 0.35f
+                    )
+                )
+            ) {
+                Box(
+                    modifier = Modifier.padding(10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isSpeaking) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                        contentDescription = if (isSpeaking) "Turn off voice briefing" else "Play voice briefing",
+                        tint = if (isSpeaking) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }

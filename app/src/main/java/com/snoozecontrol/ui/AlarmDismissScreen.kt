@@ -17,6 +17,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,7 +71,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -207,15 +207,11 @@ fun AlarmDismissScreen(
                     ) {
                         Surface(
                             onClick = { isTorchEnabled = !isTorchEnabled },
-                            color = if (isTorchEnabled) MaterialTheme.colorScheme.primaryContainer else Color.Black.copy(
-                                alpha = 0.7f
-                            ),
+                            color = if (isTorchEnabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(20.dp),
                             border = BorderStroke(
                                 1.dp,
-                                if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(
-                                    alpha = 0.5f
-                                )
+                                if (isTorchEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                             ),
                             modifier = Modifier.padding(bottom = 12.dp)
                         ) {
@@ -226,13 +222,13 @@ fun AlarmDismissScreen(
                                 Icon(
                                     imageVector = if (isTorchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                                     contentDescription = null,
-                                    tint = if (isTorchEnabled) MaterialTheme.colorScheme.primary else Color.White,
+                                    tint = if (isTorchEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (isTorchEnabled) "Flashlight ON 💡" else "Flashlight OFF ⚡",
-                                    color = if (isTorchEnabled) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+                                    color = if (isTorchEnabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
@@ -297,13 +293,15 @@ fun AlarmDismissScreen(
                 }
             }
         } else {
+            val isDark = isSystemInDarkTheme()
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.65f else 0.70f),
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.25f else 0.30f),
                                 MaterialTheme.colorScheme.background
                             )
                         )

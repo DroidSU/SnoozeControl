@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -207,15 +208,17 @@ fun AddEditAlarmScreen(
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = Color.Transparent
     ) { innerPadding ->
+        val isDark = isSystemInDarkTheme()
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.65f else 0.70f),
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.25f else 0.30f),
                             MaterialTheme.colorScheme.background
                         )
                     )
@@ -486,7 +489,7 @@ fun StepTwoWakeMethod(
                                     text = if (isProUser) "PRO ✓" else "PRO 🔒",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White,
+                                    color = if (isProUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onTertiary,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }

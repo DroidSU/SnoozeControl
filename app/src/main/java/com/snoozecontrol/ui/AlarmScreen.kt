@@ -11,6 +11,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -94,6 +95,7 @@ fun AlarmScreen(
     weatherInfo: WeatherInfo?,
     isProUser: Boolean = false,
     isDebugMode: Boolean = false,
+    isLoading: Boolean = false,
     onAddClick: () -> Unit,
     onEditClick: (Int) -> Unit,
     onToggleAlarm: (Int) -> Unit,
@@ -105,6 +107,23 @@ fun AlarmScreen(
     val greeting = remember { Utils.getGreeting(context) }
 
     Scaffold(
+        topBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 4.dp,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.statusBarsPadding()) {
+                    MainScreenHeader(
+                        isProUser = isProUser,
+                        isDebugMode = isDebugMode,
+                        onOpenPaywall = onOpenPaywall,
+                        onToggleDebugMode = onToggleDebugMode
+                    )
+                }
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddClick,
@@ -130,26 +149,28 @@ fun AlarmScreen(
         },
         containerColor = Color.Transparent
     ) { innerPadding ->
+        val isDark = isSystemInDarkTheme()
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.65f else 0.70f),
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isDark) 0.25f else 0.30f),
                             MaterialTheme.colorScheme.background
                         )
                     )
                 )
-                .systemBarsPadding()
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    bottom = innerPadding.calculateBottomPadding() + 90.dp,
+                    bottom = 90.dp,
                     start = 18.dp,
                     end = 18.dp,
-                    top = 65.dp
+                    top = 16.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -161,7 +182,11 @@ fun AlarmScreen(
                     )
                 }
 
-                if (alarms.isEmpty()) {
+                if (isLoading) {
+                    item {
+                        LoadingStateView()
+                    }
+                } else if (alarms.isEmpty()) {
                     item {
                         EmptyStateView()
                     }
@@ -175,19 +200,6 @@ fun AlarmScreen(
                         )
                     }
                 }
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-            ) {
-                MainScreenHeader(
-                    isProUser = isProUser,
-                    isDebugMode = isDebugMode,
-                    onOpenPaywall = onOpenPaywall,
-                    onToggleDebugMode = onToggleDebugMode
-                )
             }
         }
     }
@@ -262,7 +274,7 @@ fun MainScreenHeader(
                 Icon(
                     imageVector = Icons.Default.WorkspacePremium,
                     contentDescription = null,
-                    tint = if (isProUser) Color.White else MaterialTheme.colorScheme.primary,
+                    tint = if (isProUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -270,7 +282,7 @@ fun MainScreenHeader(
                     text = if (isProUser) "PRO ✓" else "PRO 🔒",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (isProUser) Color.White else MaterialTheme.colorScheme.primary
+                    color = if (isProUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
@@ -388,6 +400,31 @@ fun FloatingGreetingBar(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun LazyItemScope.LoadingStateView() {
+    Box(
+        modifier = Modifier
+            .fillParentMaxHeight(0.60f)
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(46.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 3.5.dp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Loading your alarms...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -646,7 +683,28 @@ fun AlarmScreenPreview() {
         AlarmItem(2, 8, 30, false),
         AlarmItem(3, 22, 15, true)
     )
-    SnoozeControlTheme {
+    SnoozeControlTheme(darkTheme = false) {
+        AlarmScreen(
+            alarms = sampleAlarms,
+            nextAlarm = sampleAlarms.first(),
+            weatherInfo = null,
+            onAddClick = {},
+            onEditClick = {},
+            onToggleAlarm = {},
+            onDeleteAlarm = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AlarmScreenDarkPreview() {
+    val sampleAlarms = listOf(
+        AlarmItem(1, 7, 0, true),
+        AlarmItem(2, 8, 30, false),
+        AlarmItem(3, 22, 15, true)
+    )
+    SnoozeControlTheme(darkTheme = true) {
         AlarmScreen(
             alarms = sampleAlarms,
             nextAlarm = sampleAlarms.first(),

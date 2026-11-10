@@ -212,21 +212,22 @@ fun LiquidProgressWave(
                 if (animatedProgress > 0.05f) {
                     val bubbleY1 = liquidY + (canvasHeight - liquidY) * bubbleOffset1
                     val bubbleY2 = liquidY + (canvasHeight - liquidY) * bubbleOffset2
+                    val bubbleColor = primaryColor
 
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = bubbleColor.copy(alpha = 0.4f),
                         radius = 6.dp.toPx(),
                         center = Offset(width * 0.3f, bubbleY1)
                     )
 
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.3f),
+                        color = bubbleColor.copy(alpha = 0.3f),
                         radius = 4.dp.toPx(),
                         center = Offset(width * 0.7f, bubbleY2)
                     )
 
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.25f),
+                        color = bubbleColor.copy(alpha = 0.25f),
                         radius = 8.dp.toPx(),
                         center = Offset(width * 0.5f, (bubbleY1 + bubbleY2) / 2)
                     )
